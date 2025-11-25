@@ -7,6 +7,7 @@ import NavBar from './components/NavBar.jsx'
 import Home from './pages/Home.js';
 import Login from './pages/Login.jsx';
 import Signup from './pages/SignUp.jsx';
+import Profile from './pages/Profile.tsx';
 
 function App() {
   const [count, setCount] = useState(0)
@@ -20,6 +21,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Home />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </Router>
     </div>
