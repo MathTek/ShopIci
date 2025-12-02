@@ -23,7 +23,6 @@ const Signup = () => {
       setMessage(error.message);
     } else {
       setMessage("Signup successful! Check your email to confirm.");
-      // Redirection vers login
       navigate("/login");
     }
   };

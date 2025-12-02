@@ -7,12 +7,10 @@ const Navbar = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Récupère l'utilisateur courant
         supabase.auth.getSession().then(({ data }) => {
         setUser(data.session?.user ?? null);
         });
 
-        // Écoute les changements d'auth
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user ?? null);
         });
