@@ -1,19 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
+
 
 const Navbar = () => {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
+    const [avatarUrl, setAvatarUrl] = useState("");
+
+
+    const loadExistingAvatar = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user) return;
+    
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("avatar_url")
+            .eq("id", session.user.id)
+            .single();
+    
+          if (data?.avatar_url) {
+            setAvatarUrl(data.avatar_url);
+            console.log("✅ Avatar existant chargé:", data.avatar_url);
+          }
+        } catch (err) {
+          console.log("Pas d'avatar existant trouvé");
+        }
+    };
+
+    loadExistingAvatar();
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
-        setUser(data.session?.user ?? null);
+          setUser(data.session?.user ?? null);
         });
 
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
+          setUser(session?.user ?? null);
         });
+
+        loadExistingAvatar();
 
         return () => listener.subscription.unsubscribe();
     }, []);
@@ -23,9 +50,10 @@ const Navbar = () => {
         setUser(null);
         navigate("/login");
     };
+
     
   return (
-    <nav className="navbar sticky top-0 z-50  border-b border-gray-100 shadow-sm">
+    <nav className="navbar sticky top-0 z-50 bg-gray-800 border-b border-gray-100 shadow-sm">
       <div className="flex-1">
         <a className="btn btn-ghost text-2xl font-semibold text-gray-900 hover:text-gray-700 transition-colors duration-200" href="/">
           🛍️ ShopIci
@@ -110,7 +138,7 @@ const Navbar = () => {
             <div className="w-10 rounded-full ring-2 ring-gray-200 ring-offset-2 ring-offset-white">
               <img
                 alt="User Avatar"
-                src={user?.user_metadata?.avatar_url || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"}
+                src={avatarUrl || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"}
                 className="rounded-full"
               />
             </div>

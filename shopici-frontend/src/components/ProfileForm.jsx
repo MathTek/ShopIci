@@ -9,7 +9,7 @@ export default function ProfileForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState("");
-  const [isEditing, setIsEditing] = useState(false); // ✅ mode édition
+  const [isEditing, setIsEditing] = useState(false); 
 
   useEffect(() => {
     async function fetchUser() {
