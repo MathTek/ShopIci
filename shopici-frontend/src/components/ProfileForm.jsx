@@ -10,6 +10,8 @@ export default function ProfileForm() {
   const [success, setSuccess] = useState(false);
   const [username, setUsername] = useState("");
   const [isEditing, setIsEditing] = useState(false); 
+  const [bio, setBio] = useState("");
+  const [address, setAddress] = useState("");
 
   useEffect(() => {
     async function fetchUser() {
@@ -26,7 +28,7 @@ export default function ProfileForm() {
       if (user) {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, phone, username")
+          .select("full_name, phone, username, bio, address")
           .eq("id", user.id)
           .single();
 
@@ -34,6 +36,8 @@ export default function ProfileForm() {
           setName(data.full_name || "");
           setPhone(data.phone || "");
           setUsername(data.username || "");
+          setBio(data.bio || "");
+          setAddress(data.address || "");
         }
         if (error) {
           console.error("Error fetching profile:", error.message);
@@ -63,6 +67,8 @@ export default function ProfileForm() {
           full_name: name,
           phone: phone,
           username: username,
+          bio: bio,
+          address: address
         });
 
       if (profileError) {
@@ -156,7 +162,28 @@ return (
                 />
             </div>
 
-            {/* Email Field */}
+            {/* Bio Field */}
+            <div className="form-control">  
+              <label className="label">
+                <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-3l-4 4z" />
+                  </svg>
+                  Bio
+                </span>
+              </label>
+              <textarea
+                placeholder="Tell us about yourself"
+                className={`textarea textarea-bordered text-base-content placeholder:text-base-content/60 w-full rounded-xl h-24 transition-all duration-300 ${
+                  isEditing 
+                    ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
+                    : 'bg-base-300/30 cursor-not-allowed'
+                }`}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
             <div className="form-control">
                 <label className="label">
                     <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
@@ -200,6 +227,32 @@ return (
                     }`}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    disabled={!isEditing}
+                />
+            </div>
+
+            {/* {Adress field} */}
+
+            <div className="form-control">
+                <label className="label">
+                    <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Address
+                    </span>
+                </label>
+                <input
+                    type="text"
+                    placeholder="Enter your address"
+                    className={`input input-bordered w-full rounded-xl h-14 transition-all duration-300 ${
+                        isEditing
+                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80'
+                            : 'bg-base-300/30 cursor-not-allowed'
+                    }`}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     disabled={!isEditing}
                 />
             </div>
