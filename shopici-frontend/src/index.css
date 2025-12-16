@@ -146,6 +146,12 @@ body {
   min-height: 3rem;
 }
 
+.btn-md {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  min-height: 2.5rem;
+}
+
 .btn-sm {
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -160,6 +166,8 @@ body {
   padding: 1rem;
   min-height: 4rem;
   width: 100%;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Card Styles */
@@ -275,6 +283,19 @@ body {
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   border: 1px solid #e5e7eb;
+  animation: slideDown 0.2s ease-out;
+  transform-origin: top;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Menu Styles */
@@ -465,6 +486,48 @@ body {
 
 .animate-bounce-gentle {
   animation: bounceGentle 2s infinite;
+}
+
+/* Navigation Improvements */
+.navbar {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Dropdown improvements */
+
+/* Profile Menu Enhancements */
+.profile-menu-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-menu-item:hover {
+  transform: translateX(4px);
+}
+
+/* Responsive Search Bar */
+.search-input {
+  transition: width 0.3s ease, background-color 0.2s ease;
+}
+
+.search-input:focus {
+  width: 280px;
+}
+
+@media (max-width: 1279px) {
+  .search-input:focus {
+    width: 220px;
+  }
+}
+
+/* Avatar Improvements */
+.avatar-ring {
+  transition: all 0.3s ease;
+}
+
+.avatar-ring:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
 
 /* Positioning Utilities */
@@ -711,6 +774,8 @@ body {
 
 /* Responsive Utilities */
 @media (min-width: 768px) {
+  .md\:flex { display: flex; }
+  .md\:hidden { display: none; }
   .md\:block { display: block; }
   .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -727,6 +792,9 @@ body {
 }
 
 @media (min-width: 1024px) {
+  .lg\:flex { display: flex; }
+  .lg\:hidden { display: none; }
+  .lg\:block { display: block; }
   .lg\:px-8 { padding-left: 2rem; padding-right: 2rem; }
 }
 
