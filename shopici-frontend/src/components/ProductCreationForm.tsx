@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
+import { supabase } from "../services/supabaseClient";
 
 interface ProductCreationFormProps {
     onProductCreated: (product: any) => void;
@@ -10,10 +11,13 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
         name: '',
         description: '',
         price: '',
+        category: '',
         image: null as File | null
     });
+    const [userId, setUserId] = useState<string | null>(null);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -29,7 +33,21 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const getUserId = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUserId(session?.user.id || null);
+        } catch (error) {
+            console.error("Error fetching user ID:", error);
+            return null;
+        }
+    }
+
+    useEffect(() => {
+        getUserId();
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         // Validation simple
@@ -38,14 +56,71 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
             return;
         }
 
-        // Créer un objet produit
+        let imageUrl = '/placeholder-image.jpg';
+
+        // Upload de l'image si présente
+        if (formData.image) {
+            try {
+                // Validation du fichier image
+                if (!formData.image.type.startsWith('image/')) {
+                    alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
+                    return;
+                }
+
+                if (formData.image.size > 5 * 1024 * 1024) {
+                    alert('File is too large. Maximum size allowed: 5MB');
+                    return;
+                }
+
+                // Récupérer la session utilisateur pour l'upload
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.user) {
+                    alert('You must be logged in to upload images');
+                    return;
+                }
+
+                const fileExt = formData.image.name.split('.').pop();
+                const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                
+                console.log('Uploading image:', fileName);
+                
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('item-images')
+                    .upload(fileName, formData.image, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (uploadError) {
+                    console.error('Error uploading image:', uploadError);
+                    alert('Failed to upload image: ' + uploadError.message);
+                    return;
+                }
+
+                // Récupérer l'URL publique de l'image
+                const { data: urlData } = supabase.storage
+                    .from('item-images')
+                    .getPublicUrl(fileName);
+                
+                imageUrl = urlData.publicUrl;
+                console.log('Image uploaded successfully:', imageUrl);
+                
+            } catch (error) {
+                console.error('Error during image upload:', error);
+                alert('Failed to upload image');
+                return;
+            }
+        }
+
+        // Créer un objet produit avec l'URL de l'image uploadée
         const newProduct = {
-            id: Date.now(), // ID temporaire
-            name: formData.name,
+            title: formData.name,
             description: formData.description,
             price: parseFloat(formData.price),
-            image_url: formData.image ? URL.createObjectURL(formData.image) : '/placeholder-image.jpg',
-            status: 'active'
+            category: formData.category,
+            image_urls: imageUrl,
+            status: 'active',
+            user_id: userId
         };
 
         onProductCreated(newProduct);
@@ -101,6 +176,25 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     placeholder="0.00"
                     required
                 />
+            </div>
+
+            {/* Category */}
+            <div>
+                <label className="block text-sm font-medium text-white/90 mb-2">
+                    Category *
+                </label>
+                <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300"
+                    required
+                >
+                    <option value="">Select a category</option>
+                    <option value="electronics">Electronics</option>
+                    <option value="fashion">Fashion</option>
+                    <option value="home">Home</option>
+                </select>
             </div>
 
             {/* Image Upload */}

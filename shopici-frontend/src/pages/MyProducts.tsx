@@ -9,11 +9,59 @@ const MyProducts = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const navigate = useNavigate();
 
+
+    const checkAuthAndLoadProducts = async () => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+
+            const userId = session.user.id;
+            const { data: productsData, error } = await supabase
+                .from('products')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error("Error fetching products:", error);
+            } else {
+                setProducts(productsData || []);
+            }
+        } catch (error) {
+            console.error("Error during authentication check and product loading:", error);
+        }
+    };
+
+    const pushProductToDatabase = async (product: any) => {
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .insert([product])
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error inserting product:", error);
+                return null;
+            } else {
+                return data; // Retourner le produit avec l'ID réel
+            }
+        } catch (error) {
+            console.error("Error during product insertion:", error);
+            return null;
+        }
+    };
+
+   
+
+
     useEffect(() => {
-    
         setTimeout(() => {
             setLoading(false);
         }, 1000);
+        checkAuthAndLoadProducts();
     }, []);
 
     const handleCreateProduct = () => {
@@ -24,15 +72,21 @@ const MyProducts = () => {
         setShowCreateForm(false);
     };
 
-    const handleProductCreated = (newProduct: any) => {
-        setProducts(prevProducts => [...prevProducts, newProduct]);
+    const handleProductCreated = async (newProduct: any) => {
+        // Sauvegarder en base et récupérer le produit avec son vrai ID
+        const savedProduct = await pushProductToDatabase(newProduct);
+        
+        if (savedProduct) {
+            // Ajouter le produit avec les vraies données de la DB à la liste locale
+            setProducts(prevProducts => [...prevProducts, savedProduct]);
+        }
+        
         setShowCreateForm(false);
     };
 
     if (loading) {
         return (
             <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
-                {/* Animated Background Elements */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
                     <div className="absolute top-1/2 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
@@ -47,16 +101,16 @@ const MyProducts = () => {
 
     return (
         <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-            {/* Animated Background Elements - même style que Home */}
+           
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute top-1/2 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
                 <div className="absolute bottom-10 left-1/3 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-pulse"></div>
             </div>
 
-            {/* Content */}
+          
             <div className="relative z-10 py-8">
-                {/* Header avec titre et bouton de création */}
+                
                 <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                         <div>
@@ -119,7 +173,7 @@ const MyProducts = () => {
                             </div>
                         </div>
                     ) : (
-                        /* Grille des produits - Format carré compact */
+
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {products.map((product) => (
                                 <div
@@ -127,23 +181,24 @@ const MyProducts = () => {
                                     className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
                                     onClick={() => navigate(`/product/${product.id}`)}
                                 >
-                                    {/* Image du produit - format carré */}
+                                
                                     <div className="relative overflow-hidden h-2/3">
                                         <img
-                                            src={product.image_url}
-                                            alt={product.name}
+                                            src={product.image_urls}
+                                            alt={product.title || product.name || 'Product'}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         
-                                        {/* Badge de statut */}
+                               
                                         <div className="absolute top-2 right-2">
                                             <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
                                         </div>
 
-                                        {/* Boutons d'action en overlay bien visibles */}
+                                
                                         <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                            {/* Bouton d'édition */}
+                                      
                                             <button 
                                                 className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
                                                 onClick={(e) => {
@@ -156,7 +211,7 @@ const MyProducts = () => {
                                                 </svg>
                                             </button>
                                             
-                                            {/* Bouton de suppression */}
+                                           
                                             <button 
                                                 className="p-2 hover:bg-red-500/50 hover:text-red-300 rounded-lg text-white backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
                                                 onClick={(e) => {
@@ -171,15 +226,31 @@ const MyProducts = () => {
                                         </div>
                                     </div>
 
-                                    {/* Contenu en bas - plus d'espace */}
-                                    <div className="p-3 h-1/3 flex flex-col justify-center bg-gradient-to-t from-black/20 to-transparent">
-                                        <h2 className="text-sm font-semibold text-white mb-2 line-clamp-1 group-hover:text-cyan-300 transition-colors duration-300">
-                                            {product.name}
-                                        </h2>
+                                  
+                                    <div className="p-3 h-1/3 flex flex-col justify-between bg-gradient-to-t from-black/20 to-transparent">
+                                        <div>
+                                            <h2 className="text-sm font-semibold text-white mb-1 line-clamp-1 group-hover:text-cyan-300 transition-colors duration-300">
+                                                {product.title || product.name || 'Unnamed Product'}
+                                            </h2>
+                                            
+                                            {/* Description */}
+                                            {product.description && (
+                                                <p className="text-xs text-white/70 mb-1 line-clamp-1">
+                                                    {product.description}
+                                                </p>
+                                            )}
+                                            
+                                            {/* Catégorie */}
+                                            {product.category && (
+                                                <span className="inline-block text-xs bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-center mb-1">
+                                                    {product.category}
+                                                </span>
+                                            )}
+                                        </div>
                                         
                                         <div className="flex items-center justify-center">
                                             <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                                ${product.price.toFixed(2)}
+                                                ${product.price?.toFixed(2) || '0.00'}
                                             </span>
                                         </div>
                                     </div>
@@ -215,11 +286,11 @@ const MyProducts = () => {
                 </div>
             </div>
 
-            {/* Modal Popup pour la création de produit */}
+           
             {showCreateForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="relative w-full max-w-2xl max-h-[90vh] overflow-auto">
-                        {/* Bouton de fermeture */}
+                     
                         <button
                             onClick={handleCloseForm}
                             className="absolute top-4 right-4 z-10 btn btn-ghost btn-sm btn-circle bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-red-500/20 hover:text-red-300"
@@ -229,7 +300,7 @@ const MyProducts = () => {
                             </svg>
                         </button>
 
-                        {/* Contenu du formulaire */}
+                    
                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 shadow-2xl">
                             <h2 className="text-3xl font-bold text-white mb-6 bg-gradient-to-r from-white via-cyan-200 to-blue-300 bg-clip-text text-transparent">
                                 Create New Product
