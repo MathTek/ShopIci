@@ -119,73 +119,68 @@ const MyProducts = () => {
                             </div>
                         </div>
                     ) : (
-             
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+                        /* Grille des produits - Format carré compact */
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {products.map((product) => (
                                 <div
                                     key={product.id}
-                                    className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-500 cursor-pointer hover:bg-white/15"
+                                    className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
                                     onClick={() => navigate(`/product/${product.id}`)}
                                 >
-                               
-                                    <div className="relative overflow-hidden">
+                                    {/* Image du produit - format carré */}
+                                    <div className="relative overflow-hidden h-2/3">
                                         <img
                                             src={product.image_url}
                                             alt={product.name}
-                                            className="w-full h-48 sm:h-56 object-cover group-hover:scale-110 transition-transform duration-500"
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         
-                                      
-                                        <div className="absolute top-3 right-3">
-                                            <span className="bg-gradient-to-r from-green-400 to-green-500 text-white px-2 py-1 text-xs font-semibold rounded-full shadow-lg">
-                                                Active
-                                            </span>
+                                        {/* Badge de statut */}
+                                        <div className="absolute top-2 right-2">
+                                            <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
+                                        </div>
+
+                                        {/* Boutons d'action en overlay bien visibles */}
+                                        <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            {/* Bouton d'édition */}
+                                            <button 
+                                                className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log("Edit product:", product.id);
+                                                }}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            
+                                            {/* Bouton de suppression */}
+                                            <button 
+                                                className="p-2 hover:bg-red-500/50 hover:text-red-300 rounded-lg text-white backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log("Delete product:", product.id);
+                                                }}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
 
-                               
-                                    <div className="p-4 sm:p-6">
-                                        <h2 className="text-lg sm:text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-cyan-300 transition-colors duration-300">
+                                    {/* Contenu en bas - plus d'espace */}
+                                    <div className="p-3 h-1/3 flex flex-col justify-center bg-gradient-to-t from-black/20 to-transparent">
+                                        <h2 className="text-sm font-semibold text-white mb-2 line-clamp-1 group-hover:text-cyan-300 transition-colors duration-300">
                                             {product.name}
                                         </h2>
                                         
-                                        <p className="text-white/70 text-sm mb-4 line-clamp-2">
-                                            {product.description}
-                                        </p>
-                                        
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                                        <div className="flex items-center justify-center">
+                                            <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                                                 ${product.price.toFixed(2)}
                                             </span>
-                                            
-                                            <div className="flex gap-2">
-                                         
-                                                <button 
-                                                    className="btn btn-ghost btn-sm p-2 hover:bg-cyan-500/20 rounded-lg text-white/70 hover:text-cyan-300"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        console.log("Edit product:", product.id);
-                                                    }}
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </button>
-                                                
-                                        
-                                                <button 
-                                                    className="btn btn-ghost btn-sm p-2 hover:bg-red-500/20 hover:text-red-300 rounded-lg text-white/70"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        console.log("Delete product:", product.id);
-                                                    }}
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
