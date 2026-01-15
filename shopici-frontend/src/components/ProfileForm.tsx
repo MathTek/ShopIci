@@ -88,7 +88,7 @@ export default function ProfileForm() {
 
 return (
     <div className="card-gradient w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl hover:shadow-3xl transition-all duration-500">
-        {/* Header */}
+    
         <div className="flex flex-col sm:flex-row sm:items-start md:items-center sm:justify-between mb-6 sm:mb-8 gap-4 sm:gap-2 lg:gap-4">
           <div className=" sm:text-left flex-1">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gradient mb-2">Profile Settings</h2>
@@ -115,7 +115,7 @@ return (
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {/* Username Field */}
+         
             <div className="form-control">
                 <label className="label">
                     <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
@@ -139,7 +139,7 @@ return (
                 />
             </div>
             
-            {/* Name Field */}
+           
             <div className="form-control">
                 <label className="label">
                     <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
@@ -163,7 +163,7 @@ return (
                 />
             </div>
 
-            {/* Bio Field */}
+          
             <div className="form-control">  
               <label className="label">
                 <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
@@ -208,7 +208,7 @@ return (
                 />
             </div>
 
-            {/* Phone Field */}
+           
             <div className="form-control">
                 <label className="label">
                     <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
@@ -232,7 +232,7 @@ return (
                 />
             </div>
 
-            {/* {Adress field} */}
+          
 
             <div className="form-control">
                 <label className="label">
@@ -258,7 +258,7 @@ return (
                 />
             </div>
 
-            {/* Action Buttons */}
+      
             {isEditing && (
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
                     <button
@@ -289,7 +289,7 @@ return (
                 </div>
             )}
 
-            {/* Success Message */}
+     
             {success && (
                 <div className="alert alert-success animate-fade-in rounded-lg sm:rounded-xl">
                     <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24">

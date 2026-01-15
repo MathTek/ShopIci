@@ -129,17 +129,17 @@ const Home = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background Elements */}
+      
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
         <div className="absolute bottom-10 left-1/3 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-pulse"></div>
       </div>
 
-      {/* Hero Section */}
+     
       <div className="hero-section px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center max-w-5xl mx-auto">
-          {/* Welcome Message */}
+         
           <div className="animate-fade-in">
             <h1 className="text-6xl md:text-8xl font-bold mb-6 leading-tight text-white">
               Welcome to{" "}
@@ -160,12 +160,12 @@ const Home = () => {
             </p>
           </div>
 
-          {/* CTA Buttons */}
+
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center animate-slide-up">
             <button
               className="btn-gradient text-lg px-8 py-4 hover:shadow-2xl transform hover:scale-110 transition-all duration-500 rounded-2xl"
               onClick={() => {
-                // Navigate to products
+        
               }}
             >
               🛒 Start Shopping
@@ -178,10 +178,9 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Products Carousel Section */}
       <div className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-7xl mx-auto">
-          {/* Section Header */}
+
           <div className="text-center mb-12 sm:mb-16 animate-fade-in relative">
             <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 text-white/90 text-sm font-medium mb-8 hover:scale-105 transition-transform duration-300">
               <span className="text-xl animate-pulse">🔥</span>
@@ -201,9 +200,9 @@ const Home = () => {
             </p>
           </div>
 
-          {/* Carousel Container */}
+          
           <div className="relative">
-            {/* Navigation Buttons */}
+            
             <button 
               onClick={prevSlide}
               className="group absolute -left-8 sm:-left-16 lg:-left-20 top-1/2 transform -translate-y-1/2 z-20 w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-xl shadow-2xl hover:shadow-cyan-500/30 border border-white/30 text-white hover:from-cyan-500/30 hover:to-blue-500/30 hover:border-cyan-400/50 transition-all duration-500 hover:scale-110 flex items-center justify-center relative overflow-hidden"
@@ -224,7 +223,6 @@ const Home = () => {
               </svg>
             </button>
 
-            {/* Carousel Track */}
             <div className="overflow-hidden mx-16 sm:mx-24 lg:mx-28">
               <div 
                 className="flex transition-transform duration-500 ease-in-out"
@@ -237,13 +235,13 @@ const Home = () => {
                         .slice(slideIndex * itemsPerSlide.desktop, (slideIndex + 1) * itemsPerSlide.desktop)
                         .map((product) => (
                           <div key={product.id} className="group animate-fade-in">
-                            {/* Product Card */}
+                         
                             <div className="relative bg-gradient-to-br from-white/15 via-white/10 to-white/5 backdrop-blur-xl border border-white/30 hover:border-cyan-400/50 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl hover:shadow-cyan-500/25 hover:bg-gradient-to-br hover:from-white/20 hover:via-cyan-500/10 hover:to-blue-500/5 transition-all duration-700 transform hover:scale-105 hover:-rotate-1">
                               
-                              {/* Gradient Overlay Effect */}
+                             
                               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-cyan-500/5 group-hover:via-purple-500/3 group-hover:to-pink-500/5 transition-all duration-700 z-10 pointer-events-none rounded-3xl"></div>
                               
-                              {/* Product Image */}
+                        
                               <div className="relative overflow-hidden">
                                 <img 
                                   src={product.image} 
@@ -251,10 +249,10 @@ const Home = () => {
                                   className="w-full h-48 sm:h-56 lg:h-64 object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110"
                                 />
                                 
-                                {/* Image Overlay */}
+                         
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 
-                                {/* Discount Badge */}
+                       
                                 {product.discount && (
                                   <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20">
                                     <div className="bg-gradient-to-r from-red-500 via-pink-600 to-rose-600 text-white px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold shadow-2xl border border-red-400/50 animate-pulse hover:animate-bounce transform hover:scale-110 transition-transform duration-300">
@@ -266,7 +264,7 @@ const Home = () => {
                                   </div>
                                 )}
                                 
-                                {/* Quick Actions */}
+                            
                                 <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                                   <button className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-md shadow-xl border border-white/30 flex items-center justify-center text-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-500 hover:border-blue-400 hover:scale-110 transition-all duration-300">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -282,7 +280,7 @@ const Home = () => {
                                   </button>
                                 </div>
                                 
-                                {/* Floating Effect Dots */}
+                            
                                 <div className="absolute bottom-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20">
                                   <div className="flex gap-1">
                                     <span className="w-1 h-1 bg-cyan-400 rounded-full animate-ping"></span>
@@ -292,7 +290,7 @@ const Home = () => {
                                 </div>
                               </div>
 
-                              {/* Product Info */}
+                       
                               <div className="p-4 sm:p-6 relative z-10">
                                 <div className="mb-4">
                                   <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 hover:border-cyan-400/50 transition-all duration-300">
@@ -305,7 +303,7 @@ const Home = () => {
                                   {product.name}
                                 </h3>
 
-                                {/* Rating */}
+                               
                                 <div className="flex items-center gap-2 mb-4">
                                   <div className="flex items-center gap-1">
                                     {[...Array(5)].map((_, i) => (
@@ -328,7 +326,7 @@ const Home = () => {
                                   </span>
                                 </div>
 
-                                {/* Price */}
+                              
                                 <div className="flex items-center gap-3 mb-6">
                                   <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
                                     ${product.price}
@@ -345,7 +343,7 @@ const Home = () => {
                                   )}
                                 </div>
 
-                                {/* Add to Cart Button */}
+                           
                                 <button className="group w-full relative overflow-hidden bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md border border-white/30 text-white hover:bg-white hover:text-gray-800 hover:border-white font-bold py-3.5 px-6 rounded-xl text-sm sm:text-base shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500 flex items-center justify-center gap-3">
                                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300"></div>
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:animate-bounce relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -364,7 +362,7 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Carousel Dots */}
+          
             <div className="flex justify-center mt-8 sm:mt-10 gap-3">
               {Array.from({ length: Math.ceil(products.length / itemsPerSlide.desktop) }).map((_, index) => (
                 <button
@@ -384,7 +382,7 @@ const Home = () => {
             </div>
           </div>
 
-          {/* View All Products Button */}
+      
           <div className="text-center mt-12 sm:mt-16">
             <button className="group relative overflow-hidden bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-xl border-2 border-white/30 text-white hover:bg-white hover:text-gray-800 hover:border-white font-bold px-12 sm:px-16 py-5 sm:py-6 rounded-2xl shadow-2xl hover:shadow-white/30 transform hover:scale-110 hover:-rotate-1 transition-all duration-500 text-sm sm:text-base inline-flex items-center gap-4">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-cyan-500/20 group-hover:via-purple-500/10 group-hover:to-pink-500/20 transition-all duration-500"></div>
@@ -400,7 +398,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Floating Action Button */}
+      
       <div className="fixed bottom-8 right-8 z-50">
         <button className="btn btn-circle btn-lg btn-primary shadow-2xl hover:scale-110 transform transition-all duration-300 animate-bounce-gentle">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

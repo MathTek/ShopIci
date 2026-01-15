@@ -80,7 +80,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
-      {/* Animated Background */}
+   
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
@@ -88,7 +88,7 @@ const Login = () => {
       </div>
 
       <div className="card-gradient w-full max-w-md rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 animate-fade-in relative z-10">
-        {/* Header */}
+        
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">🛍️</div>
           <h2 className="text-4xl font-bold text-gradient mb-2">Welcome Back!</h2>
@@ -96,7 +96,7 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
-          {/* Email/Username Input */}
+      
           <div className="form-control">
             <label className="label">
               <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
@@ -116,7 +116,7 @@ const Login = () => {
             />
           </div>
 
-          {/* Password Input */}
+
           <div className="form-control">
             <label className="label">
               <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
@@ -141,7 +141,7 @@ const Login = () => {
             </label>
           </div>
 
-          {/* Login Button */}
+ 
           <button
             type="submit"
             className="btn-gradient w-full h-14 text-lg font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
@@ -152,7 +152,7 @@ const Login = () => {
             Sign In
           </button>
 
-          {/* Message Display */}
+        
           {message && (
             <div className={`alert ${message.includes("successful") ? "alert-success" : "alert-error"} animate-fade-in rounded-xl`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -167,10 +167,10 @@ const Login = () => {
           )}
         </form>
 
-        {/* Divider */}
+        
         <div className="divider my-6 text-base-content/50">or</div>
 
-        {/* Social Login */}
+ 
         <div className="space-y-3">
           <button className="btn btn-outline w-full h-12 rounded-xl hover:btn-primary transition-all duration-300">
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -183,7 +183,7 @@ const Login = () => {
           </button>
         </div>
 
-        {/* Sign Up Link */}
+       
         <div className="text-center mt-8 p-4 bg-base-200/30 rounded-xl">
           <p className="text-base-content/70">
             Don't have an account?{" "}

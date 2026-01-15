@@ -46,7 +46,7 @@ const MyProducts = () => {
                 console.error("Error inserting product:", error);
                 return null;
             } else {
-                return data; // Retourner le produit avec l'ID réel
+                return data; 
             }
         } catch (error) {
             console.error("Error during product insertion:", error);
@@ -73,11 +73,11 @@ const MyProducts = () => {
     };
 
     const handleProductCreated = async (newProduct: any) => {
-        // Sauvegarder en base et récupérer le produit avec son vrai ID
+    
         const savedProduct = await pushProductToDatabase(newProduct);
         
         if (savedProduct) {
-            // Ajouter le produit avec les vraies données de la DB à la liste locale
+          
             setProducts(prevProducts => [...prevProducts, savedProduct]);
         }
         
@@ -233,14 +233,14 @@ const MyProducts = () => {
                                                 {product.title || product.name || 'Unnamed Product'}
                                             </h2>
                                             
-                                            {/* Description */}
+                                           
                                             {product.description && (
                                                 <p className="text-xs text-white/70 mb-1 line-clamp-1">
                                                     {product.description}
                                                 </p>
                                             )}
                                             
-                                            {/* Catégorie */}
+                                   
                                             {product.category && (
                                                 <span className="inline-block text-xs bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-center mb-1">
                                                     {product.category}

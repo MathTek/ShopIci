@@ -121,7 +121,7 @@ const Profile = () => {
     inputFile.current?.click();
   };
 
-  // Loading state
+
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -133,7 +133,7 @@ const Profile = () => {
     );
   }
 
-  // Not authenticated - redirect to login
+
   if (isAuthenticated === false) {
     return (
       <div className="min-h-screen flex items-center justify-center">

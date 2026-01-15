@@ -50,7 +50,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validation simple
+        
         if (!formData.name || !formData.description || !formData.price) {
             alert('Please fill in all required fields');
             return;
@@ -58,10 +58,10 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
 
         let imageUrl = '/placeholder-image.jpg';
 
-        // Upload de l'image si présente
+    
         if (formData.image) {
             try {
-                // Validation du fichier image
+            
                 if (!formData.image.type.startsWith('image/')) {
                     alert('Please select a valid image file (JPG, PNG, GIF, WebP)');
                     return;
@@ -72,7 +72,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     return;
                 }
 
-                // Récupérer la session utilisateur pour l'upload
+               
                 const { data: { session } } = await supabase.auth.getSession();
                 if (!session?.user) {
                     alert('You must be logged in to upload images');
@@ -97,7 +97,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     return;
                 }
 
-                // Récupérer l'URL publique de l'image
+               
                 const { data: urlData } = supabase.storage
                     .from('item-images')
                     .getPublicUrl(fileName);
@@ -112,7 +112,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
             }
         }
 
-        // Créer un objet produit avec l'URL de l'image uploadée
+        
         const newProduct = {
             title: formData.name,
             description: formData.description,
@@ -128,7 +128,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Product Name */}
+      
             <div>
                 <label className="block text-sm font-medium text-white/90 mb-2">
                     Product Name *
@@ -144,7 +144,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 />
             </div>
 
-            {/* Description */}
+       
             <div>
                 <label className="block text-sm font-medium text-white/90 mb-2">
                     Description *
@@ -160,7 +160,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 />
             </div>
 
-            {/* Price */}
+    
             <div>
                 <label className="block text-sm font-medium text-white/90 mb-2">
                     Price ($) *
@@ -170,7 +170,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    step="0.01"
+                    step="10"
                     min="0"
                     className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300"
                     placeholder="0.00"
@@ -178,7 +178,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 />
             </div>
 
-            {/* Category */}
+          
             <div>
                 <label className="block text-sm font-medium text-white/90 mb-2">
                     Category *
@@ -187,20 +187,19 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300 appearance-none"
                     required
                 >
-                    <option value="">Select a category</option>
-                    <option value="electronics">Electronics</option>
-                    <option value="fashion">Fashion</option>
-                    <option value="home">Home</option>
+                    <option value="" className="bg-zinc-900 text-white">Select a category</option>
+                    <option value="electronics" className="bg-zinc-900 text-white">Electronics</option>
+                    <option value="fashion" className="bg-zinc-900 text-white">Fashion</option>
+                    <option value="home" className="bg-zinc-900 text-white">Home</option>
                 </select>
             </div>
 
-            {/* Image Upload */}
             <div>
                 <label className="block text-sm font-medium text-white/90 mb-2">
-                    Product Image
+                    Product Image *
                 </label>
                 <div className="relative">
                     <input
@@ -210,6 +209,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                         accept="image/*"
                         className="hidden"
                         id="image-upload"
+                        required
                     />
                     <label
                         htmlFor="image-upload"
@@ -225,12 +225,12 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 </div>
             </div>
 
-            {/* Action Buttons */}
+         
             <div className="flex gap-4 pt-4">
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="flex-1 px-6 py-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300"
+                    className="flex-1 px-6 py-3 bg-red-500 backdrop-blur-md border border-white/20 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300"
                 >
                     Cancel
                 </button>
