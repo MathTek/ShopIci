@@ -1,14 +1,24 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-const Login = () => {
-  const [cred, setCred] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+// Types
+interface CredentialResult {
+  email?: string;
+  id?: string;
+}
+
+interface EmailResult {
+  email: string;
+}
+
+const Login: React.FC = () => {
+  const [cred, setCred] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
   const navigate = useNavigate();
 
-  const checkCredExists = async (cred) => {
+  const checkCredExists = async (cred: string): Promise<CredentialResult | null> => {
     if (cred.includes("@")) {
       return { email: cred };
     } else {
@@ -27,7 +37,7 @@ const Login = () => {
     }
   };
 
-  const findAssociatedEmail = async (credId) => {
+  const findAssociatedEmail = async (credId: CredentialResult): Promise<EmailResult | null> => {
     if (credId?.email) {
       return { email: credId.email };
     }
@@ -51,36 +61,45 @@ const Login = () => {
     return { email: data.email };
   };
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    const credId = await checkCredExists(cred);
+    setMessage("");
 
-    if (!credId) {
-      setMessage("User not found.");
-      return;
-    }
+    try {
+      const credResult = await checkCredExists(cred);
+      if (!credResult) {
+        setMessage("User not found");
+        return;
+      }
 
-    const emailData = await findAssociatedEmail(credId);
+      const emailResult = await findAssociatedEmail(credResult);
+      if (!emailResult) {
+        setMessage("Email not found for this user");
+        return;
+      }
 
-    console.log("Email Data:", emailData.email);
-    if (!emailData) {
-      setMessage("Email not found.");
-      return;
-    }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailResult.email,
+        password: password,
+      });
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email: emailData.email, password });
-
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Login successful!");
-      navigate("/"); 
+      if (error) {
+        setMessage(error.message);
+      } else if (data?.user) {
+        setMessage("Login successful!");
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setMessage("An unexpected error occurred");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
-   
+     
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
@@ -96,7 +115,7 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
-      
+        
           <div className="form-control">
             <label className="label">
               <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
@@ -115,7 +134,6 @@ const Login = () => {
               required
             />
           </div>
-
 
           <div className="form-control">
             <label className="label">
@@ -141,7 +159,7 @@ const Login = () => {
             </label>
           </div>
 
- 
+         
           <button
             type="submit"
             className="btn-gradient w-full h-14 text-lg font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
@@ -152,7 +170,7 @@ const Login = () => {
             Sign In
           </button>
 
-        
+          
           {message && (
             <div className={`alert ${message.includes("successful") ? "alert-success" : "alert-error"} animate-fade-in rounded-xl`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -170,7 +188,7 @@ const Login = () => {
         
         <div className="divider my-6 text-base-content/50">or</div>
 
- 
+        
         <div className="space-y-3">
           <button className="btn btn-outline w-full h-12 rounded-xl hover:btn-primary transition-all duration-300">
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
