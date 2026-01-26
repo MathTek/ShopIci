@@ -54,6 +54,25 @@ const MyProducts = () => {
         }
     };
 
+    const deleteProductFromDatabase = async (productId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .delete()
+                .eq('id', productId);
+
+            if (error) {
+                console.error("Error deleting product:", error);
+                return false;
+            } else {
+                return true; 
+            }
+        } catch (error) {
+            console.error("Error during product deletion:", error);
+            return false;
+        }
+    };
+
    
 
 
@@ -216,7 +235,11 @@ const MyProducts = () => {
                                                 className="p-2 hover:bg-red-500/50 hover:text-red-300 rounded-lg text-white backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    console.log("Delete product:", product.id);
+                                                    deleteProductFromDatabase(product.id).then((success) => {
+                                                        if (success) {
+                                                            setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
+                                                        }
+                                                    });
                                                 }}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
