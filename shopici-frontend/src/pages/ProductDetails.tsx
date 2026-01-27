@@ -1,0 +1,210 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from "../services/supabaseClient";
+
+
+interface Product {
+    id: string;
+    title: string;
+    description?: string;
+    price: number;
+    category?: string;
+    image_urls?: string;
+    created_at: string;
+    user_id: string;
+}
+
+const ProductDetails: React.FC = () => {
+    const { id: productId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    const [product, setProduct] = useState<Product | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [isFavorite, setIsFavorite] = useState(false);
+
+    useEffect(() => {
+        const fetchProductDetails = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('id', productId)
+                    .single();
+                if (error) throw error;
+                setProduct(data);
+            } catch (error) {
+                console.error("Error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProductDetails();
+    }, [productId]);
+
+    const handleShare = async () => {
+        const shareData = {
+            title: product?.title,
+            text: product?.description,
+            url: window.location.href,
+        };
+        try {
+            if (navigator.share) await navigator.share(shareData);
+            else navigator.clipboard.writeText(window.location.href);
+        } catch (err) { console.error(err); }
+    };
+
+    if (loading) return (
+        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+            <span className="relative flex h-12 w-12">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-12 w-12 bg-cyan-500"></span>
+            </span>
+        </div>
+    );
+
+    if (!product) return <div className="text-white text-center mt-20">Produit introuvable.</div>;
+
+    return (
+        <div className="min-h-screen bg-[#0f172a] text-slate-200 selection:bg-cyan-500/30">
+            
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
+                <div className="absolute top-[20%] -right-[10%] w-[30%] h-[30%] bg-purple-600/15 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 lg:py-12">
+       
+                <button 
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 mb-8 text-slate-400 hover:text-white transition-colors group"
+                >
+                    <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Retour à la boutique
+                </button>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+                    
+          
+                    <div className="space-y-8 max-w-md mx-auto lg:mx-0">
+                        <div className="relative group rounded-3xl overflow-hidden bg-slate-800/50 border border-white/10 p-2 backdrop-blur-sm">
+                            <div className="aspect-[3/2] rounded-2xl overflow-hidden relative">
+                                {imageLoading && (
+                                    <div className="absolute inset-0 bg-slate-800 animate-pulse flex items-center justify-center" />
+                                )}
+                                <img
+                                    src={product.image_urls || '/placeholder.jpg'}
+                                    alt={product.title}
+                                    onLoad={() => setImageLoading(false)}
+                                    className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                                />
+                     
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            </div>
+                            
+                           
+                            <div className="absolute top-6 left-6 flex flex-col gap-2">
+                                <span className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase">
+                                    🟢 En Stock
+                                </span>
+                            </div>
+                        </div>
+
+                      
+                        <div className="flex gap-4 mt-6">
+                            <button 
+                                onClick={() => setIsFavorite(!isFavorite)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all ${isFavorite ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                            >
+                                <svg className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                {isFavorite ? 'Favori' : 'Ajouter aux favoris'}
+                            </button>
+                            <button onClick={handleShare} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+             
+                    <div className="flex flex-col space-y-10">
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="text-cyan-400 font-medium text-sm tracking-widest uppercase">
+                                    {product.category || 'Général'}
+                                </span>
+                                <span className="w-1 h-1 bg-slate-600 rounded-full" />
+                                <span className="text-slate-500 text-sm">
+                                    Publié le {new Date(product.created_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
+                                {product.title}
+                            </h1>
+                            <div className="flex items-baseline gap-4">
+                                <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                    {product.price?.toLocaleString()} €
+                                </span>
+                               
+                            </div>
+                        </div>
+
+                 
+                        <div className="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur-md mt-8">
+                            <h3 className="text-white font-semibold mb-4 text-lg">Description du produit</h3>
+                            <div className="max-h-40 overflow-y-auto pr-2">
+                                <p className="text-slate-400 leading-relaxed italic">
+                                    "{product.description || "Aucune description fournie pour cet article."}"
+                                </p>
+                            </div>
+                        </div>
+
+                  
+                        <div className="space-y-6 mt-8">
+                            <div className="flex justify-center">
+                                <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-2xl shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all transform hover:-translate-y-1 active:scale-[0.98]">
+                                    Contacter le vendeur
+                                </button>
+                            </div>
+                            
+                            <div className="flex items-center justify-between p-4 rounded-2xl border border-white/5 bg-slate-900/40">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white">
+                                        {product.user_id.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-medium text-sm">Vendeur vérifié</p>
+                                        <p className="text-slate-500 text-xs">Note : ⭐️⭐️⭐️⭐️⭐️ (4.9/5)</p>
+                                    </div>
+                                </div>
+                                <button className="text-xs text-cyan-400 hover:underline">Voir le profil</button>
+                            </div>
+                        </div>
+
+  
+                        <div className="grid grid-cols-2 gap-6 mt-8">
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/10">
+                                <div className="p-2 bg-green-500/20 rounded-lg text-green-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                </div>
+                                <span className="text-xs text-slate-300">Paiement sécurisé</span>
+                            </div>
+                            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                                <span className="text-xs text-slate-300">Support 24/7</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ProductDetails;

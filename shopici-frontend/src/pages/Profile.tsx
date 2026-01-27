@@ -7,7 +7,7 @@ const Profile = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [notification, setNotification] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading, false = not auth, true = auth
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); 
   const inputFile = useRef<HTMLInputElement | null>(null);
 
   const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
