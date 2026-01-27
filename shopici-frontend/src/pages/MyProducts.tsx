@@ -7,6 +7,8 @@ const MyProducts = () => {
     const [products, setProducts] = useState<Array<any>>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
+    const [isForUpdate, setIsForUpdate] = useState(false);
+    const [product, setProduct] = useState<any>(null);
     const navigate = useNavigate();
 
 
@@ -70,6 +72,27 @@ const MyProducts = () => {
         } catch (error) {
             console.error("Error during product deletion:", error);
             return false;
+        }
+    };
+
+    const pushUpdatedProductToDatabase = async (product: any) => {
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .update(product)
+                .eq('id', product.id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error updating product:", error);
+                return null;
+            } else {
+                return data; 
+            }
+        } catch (error) {
+            console.error("Error during product update:", error);
+            return null;
         }
     };
 
@@ -143,7 +166,10 @@ const MyProducts = () => {
                         </div>
                         
                         <button
-                            onClick={handleCreateProduct}
+                            onClick={() => {
+                                handleCreateProduct();
+                                setIsForUpdate(false);
+                            }}
                             className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -181,7 +207,7 @@ const MyProducts = () => {
                                 </p>
 
                                 <button
-                                    onClick={handleCreateProduct}
+                                    onClick={() => { handleCreateProduct(); setIsForUpdate(false); }}
                                     className="btn-gradient text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 w-full flex items-center justify-center gap-2"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -222,7 +248,9 @@ const MyProducts = () => {
                                                 className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    console.log("Edit product:", product.id);
+                                                    setShowCreateForm(true);
+                                                    setIsForUpdate(true);
+                                                    setProduct(product);
                                                 }}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -267,6 +295,13 @@ const MyProducts = () => {
                                             {product.category && (
                                                 <span className="inline-block text-xs bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-center mb-1">
                                                     {product.category}
+                                                </span>
+                                            )}
+                                            
+
+                                            {product.created_at && (
+                                                <span className="inline-block text-xs bg-white/10 text-white/70 px-1 py-0.5 rounded text-center mb-1 float-right whitespace-nowrap">
+                                                    Added on {new Date(product.created_at).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>
@@ -326,12 +361,29 @@ const MyProducts = () => {
                     
                         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 shadow-2xl">
                             <h2 className="text-3xl font-bold text-white mb-6 bg-gradient-to-r from-white via-cyan-200 to-blue-300 bg-clip-text text-transparent">
-                                Create New Product
+                                {!isForUpdate ? 'Create New Product' : 'Update Product'}
                             </h2>
-                            <ProductCreationForm 
-                                onProductCreated={handleProductCreated}
-                                onCancel={handleCloseForm}
-                            />
+                            {!isForUpdate ? (
+                                <ProductCreationForm
+                                    onProductCreated={handleProductCreated}
+                                    onCancel={handleCloseForm}
+                                    isForUpdate={false}
+                                    initialData={null}
+                                />
+                            ) : (
+                                <ProductCreationForm 
+                                    onProductCreated={async (updatedProduct) => {
+                                        const savedProduct = await pushUpdatedProductToDatabase({...product, ...updatedProduct});
+                                        if (savedProduct) {
+                                            setProducts(prevProducts => prevProducts.map(p => p.id === savedProduct.id ? savedProduct : p));
+                                        }
+                                        setShowCreateForm(false);
+                                    }}
+                                    onCancel={handleCloseForm}
+                                    isForUpdate={true}
+                                    initialData={product}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>
