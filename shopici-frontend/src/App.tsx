@@ -8,8 +8,9 @@ import Home from './pages/Home.tsx';
 import Login from './pages/Login.tsx';
 import Signup from './pages/SignUp.tsx';
 import Profile from './pages/Profile.tsx';
-import Catalog from './pages/Catalog.tsx';
+import Products from './pages/Products.tsx';
 import MyProducts from './pages/MyProducts.tsx';
+import ProductDetails from './pages/ProductDetails.tsx';
 
 function App() {
   const [count, setCount] = useState(0)
@@ -25,8 +26,9 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/products" element={<Products />} />
             <Route path="/my-products" element={<MyProducts />} />
+            <Route path="/products/:id" element={<ProductDetails />} />
           </Routes>
         </div>
       </Router>

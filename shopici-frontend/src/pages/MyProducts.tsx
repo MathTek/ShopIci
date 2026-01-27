@@ -224,7 +224,7 @@ const MyProducts = () => {
                                 <div
                                     key={product.id}
                                     className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
-                                    onClick={() => navigate(`/product/${product.id}`)}
+                                    onClick={() => navigate(`/products/${product.id}`)}
                                 >
                                 
                                     <div className="relative overflow-hidden h-2/3">

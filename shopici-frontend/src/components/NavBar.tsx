@@ -147,8 +147,8 @@ const Navbar = () => {
                         </a>
                     </li>
                      <li>
-                        <a href="/catalog" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
-                            Catalog
+                        <a href="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
+                            Products
                         </a>
                     </li>
                     <li>
