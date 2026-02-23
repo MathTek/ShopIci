@@ -21,6 +21,21 @@ const ProductDetails: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [imageLoading, setImageLoading] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
+    const [conversationPopupOpen, setConversationPopupOpen] = useState(false);
+    const [isSend, setIsSend] = useState(false);
+    const [userId, setUserId] = useState<string>("");
+    const [sellerId, setSellerId] = useState<string>("");
+
+    // Ajout des hooks pour la popup
+    const predefinedMessages = [
+        "Bonjour, ce produit est-il toujours disponible ?",
+        "Je suis intéressé par votre annonce.",
+        "Pouvez-vous me donner plus de détails ?",
+        "Est-ce possible d'avoir une remise ?",
+        "Quel est l'état du produit ?"
+    ];
+    const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+    const [sendLoading, setSendLoading] = useState(false);
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -53,6 +68,84 @@ const ProductDetails: React.FC = () => {
         } catch (err) { console.error(err); }
     };
 
+    const checkconversation = async (product: Product) => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+            
+            const userId = session.user.id;
+            const sellerId = product.user_id;
+
+            setUserId(userId);
+            setSellerId(sellerId);
+
+            const { data: existingConversation, error } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('buyer_id', userId)
+                .eq('seller_id', sellerId)
+                .eq('product_id', productId)
+                .single();
+
+            // if (error) {
+            //     console.error("Error checking existing conversation:", error);
+            //     return;
+            // }
+
+            if (existingConversation) {
+                navigate(`/conversations/${existingConversation.id}`);
+            } else {
+                console.log("No existing conversation found. Creating a new one...");
+                setConversationPopupOpen(true);
+            }
+
+        } catch (error) {
+            console.error("Error checking conversation:", error);
+        }
+    };
+
+
+    const sendMessage = async (selectedMessage: string) => {
+        try {
+            const { data: newConversation, error } = await supabase
+                .from('conversations')
+                .insert({
+                    buyer_id: userId,
+                    seller_id: sellerId,
+                    product_id: productId,
+                })
+                .select()
+                .single();
+                
+            if (error) {
+                console.error("Error creating conversation:", error);
+                return;
+            }
+
+            const {data: message, error: messageError} = await supabase
+                .from('messages')
+                .insert({
+                    conversation_id: newConversation.id,
+                    sender_id: userId,
+                    content: selectedMessage || "Hello, I'm interested in your product!",
+                })
+                .select()
+                .single();
+                
+            if (messageError) {
+                console.error("Error sending initial message:", messageError);
+                return;
+            }
+
+            navigate(`/conversations/${newConversation.id}`);
+        } catch (error) {
+            console.error("Error starting conversation:", error);
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
             <span className="relative flex h-12 w-12">
@@ -62,7 +155,50 @@ const ProductDetails: React.FC = () => {
         </div>
     );
 
-    if (!product) return <div className="text-white text-center mt-20">Produit introuvable.</div>;
+    if (!product) return <div className="text-white text-center mt-20">Product not found.</div>;
+
+    if (conversationPopupOpen) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                <div className="bg-slate-900 rounded-3xl shadow-xl p-8 w-full max-w-md border border-white/10">
+                    <h2 className="text-xl font-bold text-white mb-6 text-center">Choose a message to start the conversation</h2>
+                    <div className="space-y-4">
+                        {predefinedMessages.map((msg, idx) => (
+                            <button
+                                key={idx}
+                                className={`w-full py-3 px-4 font-semibold rounded-xl transition-all shadow-md mb-2 ${selectedMessage === msg ? 'bg-cyan-400 text-[#0f172a]' : 'bg-cyan-500 hover:bg-cyan-400 text-[#0f172a]'}`}
+                                onClick={() => setSelectedMessage(msg)}
+                            >
+                                {msg}
+                            </button>
+                        ))}
+                    </div>
+                    {selectedMessage && (
+                        <button
+                            className="mt-6 w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-xl transition-all shadow-md"
+                            disabled={sendLoading}
+                            onClick={async () => {
+                                setSendLoading(true);
+                                console.log("Starting conversation with message:", selectedMessage);
+                                setConversationPopupOpen(false);
+                                setSendLoading(false);
+                                setIsSend(true);
+                                sendMessage(selectedMessage);
+                            }}
+                        >
+                            Envoyer
+                        </button>
+                    )}
+                    <button
+                        className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl"
+                        onClick={() => setConversationPopupOpen(false)}
+                    >
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200 selection:bg-cyan-500/30">
@@ -81,7 +217,7 @@ const ProductDetails: React.FC = () => {
                     <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    Retour à la boutique
+                    Back to shop
                 </button>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
@@ -106,7 +242,7 @@ const ProductDetails: React.FC = () => {
                            
                             <div className="absolute top-6 left-6 flex flex-col gap-2">
                                 <span className="bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase">
-                                    🟢 En Stock
+                                    🟢 In Stock
                                 </span>
                             </div>
                         </div>
@@ -120,7 +256,7 @@ const ProductDetails: React.FC = () => {
                                 <svg className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
-                                {isFavorite ? 'Favori' : 'Ajouter aux favoris'}
+                                {isFavorite ? 'Favorite' : 'Add to favorites'}
                             </button>
                             <button onClick={handleShare} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,11 +271,11 @@ const ProductDetails: React.FC = () => {
                         <div>
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="text-cyan-400 font-medium text-sm tracking-widest uppercase">
-                                    {product.category || 'Général'}
+                                    {product.category || 'General'}
                                 </span>
                                 <span className="w-1 h-1 bg-slate-600 rounded-full" />
                                 <span className="text-slate-500 text-sm">
-                                    Publié le {new Date(product.created_at).toLocaleDateString()}
+                                    Published on {new Date(product.created_at).toLocaleDateString()}
                                 </span>
                             </div>
                             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
@@ -155,10 +291,10 @@ const ProductDetails: React.FC = () => {
 
                  
                         <div className="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur-md mt-8">
-                            <h3 className="text-white font-semibold mb-4 text-lg">Description du produit</h3>
+                            <h3 className="text-white font-semibold mb-4 text-lg">Product description</h3>
                             <div className="max-h-40 overflow-y-auto pr-2">
                                 <p className="text-slate-400 leading-relaxed italic">
-                                    "{product.description || "Aucune description fournie pour cet article."}"
+                                    "{product.description || "No description provided for this item."}"
                                 </p>
                             </div>
                         </div>
@@ -166,8 +302,10 @@ const ProductDetails: React.FC = () => {
                   
                         <div className="space-y-6 mt-8">
                             <div className="flex justify-center">
-                                <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-2xl shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all transform hover:-translate-y-1 active:scale-[0.98]">
-                                    Contacter le vendeur
+                                <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-2xl shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all transform hover:-translate-y-1 active:scale-[0.98]"
+                                    onClick={() => {checkconversation(product)}}
+                                >
+                                    Contact the seller
                                 </button>
                             </div>
                             
@@ -177,11 +315,11 @@ const ProductDetails: React.FC = () => {
                                         {product.user_id.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium text-sm">Vendeur vérifié</p>
-                                        <p className="text-slate-500 text-xs">Note : ⭐️⭐️⭐️⭐️⭐️ (4.9/5)</p>
+                                        <p className="text-white font-medium text-sm">Verified seller</p>
+                                        <p className="text-slate-500 text-xs">Rating: ⭐️⭐️⭐️⭐️⭐️ (4.9/5)</p>
                                     </div>
                                 </div>
-                                <button className="text-xs text-cyan-400 hover:underline">Voir le profil</button>
+                                <button className="text-xs text-cyan-400 hover:underline">View profile</button>
                             </div>
                         </div>
 
@@ -191,13 +329,13 @@ const ProductDetails: React.FC = () => {
                                 <div className="p-2 bg-green-500/20 rounded-lg text-green-400">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                                 </div>
-                                <span className="text-xs text-slate-300">Paiement sécurisé</span>
+                                <span className="text-xs text-slate-300">Secure payment</span>
                             </div>
                             <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
                                 <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
-                                <span className="text-xs text-slate-300">Support 24/7</span>
+                                <span className="text-xs text-slate-300">24/7 support</span>
                             </div>
                         </div>
                     </div>

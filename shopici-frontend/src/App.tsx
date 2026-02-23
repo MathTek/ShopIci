@@ -11,6 +11,8 @@ import Profile from './pages/Profile.tsx';
 import Products from './pages/Products.tsx';
 import MyProducts from './pages/MyProducts.tsx';
 import ProductDetails from './pages/ProductDetails.tsx';
+import Chat from './pages/Chat.tsx';
+import Conversation from './pages/Conversation.tsx';
 
 function App() {
   const [count, setCount] = useState(0)
@@ -29,6 +31,8 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/my-products" element={<MyProducts />} />
             <Route path="/products/:id" element={<ProductDetails />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/conversations/:id" element={<Conversation />} />
           </Routes>
         </div>
       </Router>
