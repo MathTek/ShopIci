@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "../contexts/CartContext";
 
 const Products = () => {
     const [products, setProducts] = useState<Array<any>>([]);
@@ -11,6 +12,7 @@ const Products = () => {
     const [sortBy, setSortBy] = useState<string>('newest');
     const [currentUser, setCurrentUser] = useState<any>(null);
     const navigate = useNavigate();
+    const { addItem } = useCart();
 
     const loadAllProducts = async () => {
         try {
@@ -290,8 +292,17 @@ const Products = () => {
                                             </div>
 
                                     
-                                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                <button className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20">
+                                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); addItem({ id: product.id, title: product.title || product.name || 'Product', price: product.price || 0, image_urls: product.image_urls || product.image_url }); }}
+                                                    className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20 cursor-pointer"
+                                                    aria-label="Ajouter au panier"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4z" />
+                                                    </svg>
+                                                </button>
+                                                <button className="p-2 hover:bg-slate-700/60 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
