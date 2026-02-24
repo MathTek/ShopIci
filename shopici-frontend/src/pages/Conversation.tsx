@@ -119,7 +119,7 @@ const Conversation: React.FC = () => {
         };
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <div className="min-h-screen bg-[#0f172a] text-slate-200">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-10 w-72 h-72 bg-cyan-400/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 right-10 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl animate-bounce-gentle"></div>

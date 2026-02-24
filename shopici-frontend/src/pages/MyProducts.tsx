@@ -126,23 +126,8 @@ const MyProducts = () => {
         setShowCreateForm(false);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute top-1/2 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
-                    <div className="absolute bottom-10 left-1/3 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-pulse"></div>
-                </div>
-                <div className="relative z-10">
-                    <div className="loading loading-spinner loading-lg text-cyan-300"></div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <div className="min-h-screen bg-[#0f172a] text-slate-200">
            
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>

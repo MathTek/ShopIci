@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ChatBubble  from '../components/ChatBubble';
 import { supabase, getUserId, getUserNameById, getProductById, deleteConversationById } from "../services/supabaseClient";
 
@@ -69,7 +69,7 @@ const  Chat = () => {
     }, [userId]);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+    <div className="min-h-screen bg-[#0f172a] text-slate-200">
         <div className="relative z-10 py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -111,67 +111,65 @@ const  Chat = () => {
                                     </p>
 
                                     <div className="flex justify-center">
-                                        <a href="/products" className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition duration-300">
+                                        <Link to="/products" className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition duration-300">
                                             Browse Products
-                                        </a>
-
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
                         ) : (
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-stretch">
+                            <div className="flex flex-wrap justify-center gap-8">
                                 {conversation.map((msg) => {
                                     const otherUserId = msg.seller_id === userId ? msg.buyer_id : msg.seller_id;
                                     const product = products[msg.product_id];
                                     const userName = userNames[otherUserId];
                                     const avatarUrl = userName?.avatarUrl || "https://img.daisyui.com/images/profile/demo/kenobee@192.webp";
                                     return (
-                                      <div className="relative group w-full" key={msg.id}>
-                                        <div className="flex items-center w-full gap-5 bg-gradient-to-br from-blue-900/60 via-purple-900/40 to-cyan-900/60 border border-white/10 rounded-xl p-6 shadow hover:shadow-xl hover:border-cyan-400 transition-all duration-200 cursor-pointer overflow-hidden min-h-[90px]">
-                                          <a
+                                      <div className="relative group w-full max-w-sm min-w-[270px] flex-1" key={msg.id}>
+                                        <div className="flex flex-col items-center bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-lg hover:shadow-2xl hover:border-cyan-400 transition-all duration-200 cursor-pointer overflow-hidden min-h-[180px]">
+                                          <Link
                                             key={msg.id}
-                                            href={`/conversations/${msg.id}`}
-                                            className="flex items-center gap-5 flex-1 min-w-0"
+                                            to={`/conversations/${msg.id}`}
+                                            className="flex flex-col items-center gap-3 flex-1 min-w-0 w-full"
                                           >
-                                            <div className="relative flex-shrink-0">
+                                            <div className="relative flex-shrink-0 mb-2">
                                               <img
                                                 src={product?.image_urls}
                                                 alt={userName?.username || 'Unknown User'}
-                                                className="w-14 h-14 rounded-lg border border-cyan-400 shadow-sm group-hover:border-purple-400 transition-all object-cover bg-white"
+                                                className="w-16 h-16 rounded-xl border border-gray-600 shadow-md group-hover:border-cyan-400 transition-all object-cover bg-white"
                                               />
                                               <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-lg font-semibold text-white group-hover:text-cyan-300 truncate">
-                                                  {userName?.username || 'Unknown User'}
-                                                </span>
-                                                <span className="px-2 py-0.5 text-xs rounded bg-cyan-500/80 text-white font-medium group-hover:bg-purple-500/80">
-                                                  {msg.seller_id === userId ? 'Buyer' : 'Seller'}
-                                                </span>
-                                              </div>
-                                              <div className="text-white/80 text-base truncate">
-                                                {product ? `Product: ${product.title}` : 'No product info'}
-                                              </div>
+                                            <span className="text-lg font-semibold text-white group-hover:text-cyan-300 truncate text-center">
+                                              {userName?.username || 'Unknown User'}
+                                            </span>
+                                            <span className="px-2 py-0.5 text-xs rounded bg-gray-700 text-white font-medium group-hover:bg-cyan-600 mb-1">
+                                              {msg.seller_id === userId ? 'Buyer' : 'Seller'}
+                                            </span>
+                                            <div className="text-gray-300 text-base truncate text-center w-full">
+                                              {product ? `Product: ${product.title}` : 'No product info'}
                                             </div>
-                                            <div className="ml-auto">
-                                              <svg className="w-6 h-6 text-cyan-400 group-hover:text-purple-400 transition-all" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                          </Link>
+                                          <div className="flex justify-between w-full mt-4">
+                                            <Link to={`/conversations/${msg.id}`} className="flex items-center gap-1 text-cyan-400 hover:text-cyan-200 font-semibold text-sm transition-all">
+                                              Voir
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                                               </svg>
-                                            </div>
-                                          </a>
-                                          <button
-                                            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-red-500/80 shadow border border-white/20 transition-all duration-200 group/delete ml-2 focus:outline-none focus:ring-2 focus:ring-red-400 hover:scale-110 hover:shadow-lg"
-                                            onClick={() => handleDeleteConversation(msg.id)}
-                                            title="Delete conversation"
-                                            tabIndex={0}
-                                            style={{ pointerEvents: 'auto' }}
-                                          >
-                                            <svg className="w-5 h-5 text-red-500 group-hover/delete:text-white transition-all" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                          </button>
+                                            </Link>
+                                            <button
+                                              className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500/80 shadow border border-gray-600 transition-all duration-200 group/delete focus:outline-none focus:ring-2 focus:ring-red-400 hover:scale-110 hover:shadow-lg"
+                                              onClick={() => handleDeleteConversation(msg.id)}
+                                              title="Delete conversation"
+                                              tabIndex={0}
+                                              style={{ pointerEvents: 'auto' }}
+                                            >
+                                              <svg className="w-4 h-4 text-red-500 group-hover/delete:text-white transition-all" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                              </svg>
+                                            </button>
+                                          </div>
                                         </div>
                                       </div>
                                     );

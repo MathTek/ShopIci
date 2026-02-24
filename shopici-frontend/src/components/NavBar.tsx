@@ -130,18 +130,18 @@ const Navbar = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
                     </svg>
                 </button>
-                <a href="/" className="flex items-center gap-2 text-2xl font-bold text-white hover:text-yellow-300">
+                <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-white hover:text-yellow-300">
                     <span>🛍️</span>
                     <span className="font-extrabold">ShopIci</span>
-                </a>
+                </Link>
             </div>
 
             <div className="hidden lg:flex">
                 <ul className="flex gap-4">
-                    <li><a href="/" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Home</a></li>
-                    <li><a href="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Products</a></li>
-                    <li><a href="/about" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">About</a></li>
-                    <li><a href="/contact" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Contact</a></li>
+                    <li><Link to="/" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Home</Link></li>
+                    <li><Link to="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Products</Link></li>
+                    <li><Link to="/about" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">About</Link></li>
+                    <li><Link to="/contact" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Contact</Link></li>
                 </ul>
             </div>
 
@@ -221,7 +221,7 @@ const Navbar = () => {
                     </ul>
                 </div>
 
-                <a href="/cart" className="btn btn-ghost btn-circle text-white mr-3 hidden lg:flex items-center cursor-pointer">
+                <Link to="/cart" className="btn btn-ghost btn-circle text-white mr-3 hidden lg:flex items-center cursor-pointer">
                     <div className="indicator">
                         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full ">
                             <svg className="h-5 w-5 text-white-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -234,7 +234,7 @@ const Navbar = () => {
                             <span className="badge badge-sm badge-primary indicator-item">{totalItems}</span>
                         )}
                     </div>
-                </a>
+                </Link>
 
                 <div className="dropdown dropdown-end">
                     <div 
@@ -256,41 +256,41 @@ const Navbar = () => {
                         className="menu menu-sm dropdown-content bg-white rounded-lg z-50 mt-3 w-56 p-3 shadow-xl border border-gray-200"
                     >
                         <li>
-                            <a 
-                                href="/profile" 
+                            <Link 
+                                to="/profile" 
                                 className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                                 My profile
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a 
-                                href="/chat" 
+                            <Link 
+                                to="/chat" 
                                 className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                 </svg>
                                 Chat
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a 
-                                href="/my-products" 
+                            <Link 
+                                to="/my-products" 
                                 className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
                             >
                                 <svg  className="h-4 w-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                     <path fill-rule="evenodd" d="M20.337 3.664c.213.212.354.486.404.782.294 1.711.657 5.195-.906 6.76-1.77 1.768-8.485 5.517-10.611 6.683a.987.987 0 0 1-1.176-.173l-.882-.88-.877-.884a.988.988 0 0 1-.173-1.177c1.165-2.126 4.913-8.841 6.682-10.611 1.562-1.563 5.046-1.198 6.757-.904.296.05.57.191.782.404ZM5.407 7.576l4-.341-2.69 4.48-2.857-.334a.996.996 0 0 1-.565-1.694l2.112-2.111Zm11.357 7.02-.34 4-2.111 2.113a.996.996 0 0 1-1.69-.565l-.422-2.807 4.563-2.74Zm.84-6.21a1.99 1.99 0 1 1-3.98 0 1.99 1.99 0 0 1 3.98 0Z" clip-rule="evenodd"/>
                                 </svg>                                
                                 My products
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a 
-                                href="/settings" 
+                            <Link 
+                                to="/settings" 
                                 className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -298,20 +298,19 @@ const Navbar = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
                                 Settings
-                            </a>
+                            </Link>
                         </li>
-                        
                         <li className="sm:hidden">
-                            <a 
-                                    href="/cart" 
-                                    className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                      Cart
-                                    <span className="badge badge-primary badge-sm">{totalItems}</span>
-                                </a>
+                            <Link 
+                                to="/cart" 
+                                className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                  Cart
+                                <span className="badge badge-primary badge-sm">{totalItems}</span>
+                            </Link>
                         </li>
 
                         <div className="divider my-1"></div>
@@ -330,15 +329,15 @@ const Navbar = () => {
                             </li>
                         ) : (
                             <li>
-                                <a 
-                                    href="/login" 
+                                <Link 
+                                    to="/login" 
                                     className="hover:bg-green-600 hover:text-white bg-green-50 rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-green-700 font-medium border border-green-200 hover:border-green-600 hover:shadow-lg"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                    </svg>
-                                    Login
-                                </a>
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                </svg>
+                                Login
+                            </Link>
                             </li>
                         )}
                     </ul>
@@ -349,11 +348,11 @@ const Navbar = () => {
         {isMobileMenuOpen && (
             <div className="absolute left-0 top-12 bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50">
                 <div className="py-2">
-                    <a href="/" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🏠 Accueil</a>
-                    <a href="/about" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">ℹ️ À propos</a>
-                    <a href="/contact" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">📞 Contact</a>
+                    <Link to="/" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🏠 Accueil</Link>
+                    <Link to="/about" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">ℹ️ À propos</Link>
+                    <Link to="/contact" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">📞 Contact</Link>
                     <hr className="my-2 mx-4" />
-                    <a href="/search" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🔍 Rechercher</a>
+                    <Link to="/search" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🔍 Rechercher</Link>
                 </div>
             </div>
         )}

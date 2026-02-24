@@ -202,13 +202,8 @@ const ProductDetails: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-200 selection:bg-cyan-500/30">
-            
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
-                <div className="absolute top-[20%] -right-[10%] w-[30%] h-[30%] bg-purple-600/15 rounded-full blur-[120px]" />
-            </div>
-
+        <div className="min-h-screen bg-[#0f172a] text-slate-200">
+            {/* Overlay supprimé pour sobriété et cohérence */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 lg:py-12">
        
                 <button 

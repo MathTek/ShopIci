@@ -1,9 +1,11 @@
 import { supabase } from "../services/supabaseClient";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const [username, setUsername] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
+  const navigate = useNavigate();
 
   const products = [
     {
@@ -128,7 +130,7 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f172a] text-slate-200">
       
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
@@ -165,14 +167,14 @@ const Home = () => {
             <button
               className="btn-gradient text-lg px-8 py-4 hover:shadow-2xl transform hover:scale-110 transition-all duration-500 rounded-2xl"
               onClick={() => {
-                window.location.href = "/products";
+                navigate("/products");
               }}
             >
               🛒 Start Shopping
             </button>
             <button className="btn btn-outline btn-lg px-8 py-4 rounded-2xl hover:btn-secondary transition-all duration-300"
             onClick={() => {
-              window.location.href = "/about";
+              navigate("/about");
             }}>
               📖 Learn More
             </button>

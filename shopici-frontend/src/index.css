@@ -17,9 +17,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
-  color: #111827;
-  background-color: #f8fafc;
+  color: #e2e8f0; /* text-slate-200 */
+  background-color: #0f172a !important; /* couleur unifiée, priorité absolue */
   min-height: 100vh;
+  transition: background-color 0.2s;
 }
 
 /* Fix for sticky positioning */
