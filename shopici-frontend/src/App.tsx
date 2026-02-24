@@ -13,12 +13,15 @@ import MyProducts from './pages/MyProducts.tsx';
 import ProductDetails from './pages/ProductDetails.tsx';
 import Chat from './pages/Chat.tsx';
 import Conversation from './pages/Conversation.tsx';
+import Cart from './pages/Cart';
+import { CartProvider } from './contexts/CartContext';
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
     <div data-theme="shopici" className="min-h-screen">
+      <CartProvider>
       <Router>
         <NavBar />
         <div className="relative">
@@ -33,9 +36,11 @@ function App() {
             <Route path="/products/:id" element={<ProductDetails />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/conversations/:id" element={<Conversation />} />
+            <Route path="/cart" element={<Cart />} />
           </Routes>
         </div>
       </Router>
+      </CartProvider>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase, getUserId } from "../services/supabaseClient";
+import { useCart } from "../contexts/CartContext";
 
 const Navbar = () => {
     const [user, setUser] = useState(null);
@@ -9,6 +10,7 @@ const Navbar = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [userId, setUserId] = useState<string | null>(null);
+    const { totalItems } = useCart();
 
     const loadExistingAvatar = async () => {
         try {
@@ -218,6 +220,22 @@ const Navbar = () => {
                     )}
                     </ul>
                 </div>
+
+                <a href="/cart" className="btn btn-ghost btn-circle text-white mr-3 hidden lg:flex items-center cursor-pointer">
+                    <div className="indicator">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full ">
+                            <svg className="h-5 w-5 text-white-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <circle cx="9" cy="21" r="1" />
+                                <circle cx="20" cy="21" r="1" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 1h4l2.68 13.39a2 2 0 002 1.61h7.72a2 2 0 002-1.61L23 6H6" />
+                            </svg>
+                        </span>
+                        {totalItems > 0 && (
+                            <span className="badge badge-sm badge-primary indicator-item">{totalItems}</span>
+                        )}
+                    </div>
+                </a>
+
                 <div className="dropdown dropdown-end">
                     <div 
                         tabIndex={0} 
@@ -285,15 +303,15 @@ const Navbar = () => {
                         
                         <li className="sm:hidden">
                             <a 
-                                href="/cart" 
-                                className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                  Cart
-                                <span className="badge badge-primary badge-sm">3</span>
-                            </a>
+                                    href="/cart" 
+                                    className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                      Cart
+                                    <span className="badge badge-primary badge-sm">{totalItems}</span>
+                                </a>
                         </li>
 
                         <div className="divider my-1"></div>
