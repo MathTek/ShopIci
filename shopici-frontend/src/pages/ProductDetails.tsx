@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from "../services/supabaseClient";
+import { useCart } from "../contexts/CartContext";
 
 
 interface Product {
@@ -21,6 +22,7 @@ const ProductDetails: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [imageLoading, setImageLoading] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
+    const { addItem } = useCart();
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -126,6 +128,12 @@ const ProductDetails: React.FC = () => {
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                                 </svg>
+                            </button>
+                            <button
+                                onClick={() => addItem({ id: product.id, title: product.title, price: product.price, image_urls: product.image_urls })}
+                                className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all"
+                            >
+                                Ajouter au panier
                             </button>
                         </div>
                     </div>

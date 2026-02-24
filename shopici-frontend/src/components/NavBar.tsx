@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
+import { useCart } from "../contexts/CartContext";
 
 const Navbar = () => {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
     const [avatarUrl, setAvatarUrl] = useState("");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { totalItems } = useCart();
 
     const loadExistingAvatar = async () => {
         try {
@@ -194,7 +196,7 @@ const Navbar = () => {
                                     d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                                 />
                             </svg>
-                            <span className="badge badge-primary badge-sm indicator-item">3</span>
+                            <span className="badge badge-primary badge-sm indicator-item">{totalItems}</span>
                         </div>
                     </div>
 
@@ -203,16 +205,26 @@ const Navbar = () => {
                         className="card card-compact dropdown-content bg-white z-50 mt-3 w-64 shadow-xl border border-gray-200"
                     >
                         <div className="card-body">
-                            <span className="text-lg font-bold text-gray-800">3 items</span>
-                            <span className="text-gray-600">Total: 99€</span>
+                            <span className="text-lg font-bold text-gray-800">{totalItems} items</span>
+                            <span className="text-gray-600">Total: —</span>
                             <div className="card-actions mt-4">
-                                <button className="btn btn-primary btn-block">
-                                    🛒 Show cart
-                                </button>
+                                <a href="/cart" className="btn btn-primary btn-block">
+                                    🛒 Voir le panier
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Visible cart button (desktop & mobile) */}
+                <a href="/cart" className="btn btn-ghost btn-circle text-white mr-3 hidden lg:flex items-center cursor-pointer">
+                    <div className="indicator">
+                        <span className="text-2xl">🛒</span>
+                        {totalItems > 0 && (
+                            <span className="badge badge-sm badge-primary indicator-item">{totalItems}</span>
+                        )}
+                    </div>
+                </a>
 
                 <div className="dropdown dropdown-end">
                     <div 
@@ -281,15 +293,15 @@ const Navbar = () => {
                         
                         <li className="sm:hidden">
                             <a 
-                                href="/cart" 
-                                className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                  Cart
-                                <span className="badge badge-primary badge-sm">3</span>
-                            </a>
+                                    href="/cart" 
+                                    className="hover:bg-blue-600 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-3 p-2 text-gray-700 font-medium"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                      Cart
+                                    <span className="badge badge-primary badge-sm">{totalItems}</span>
+                                </a>
                         </li>
 
                         <div className="divider my-1"></div>
