@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../services/supabaseClient";
+import { supabase, getUserId } from "../services/supabaseClient";
 
 const Navbar = () => {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
     const [avatarUrl, setAvatarUrl] = useState("");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [userId, setUserId] = useState<string | null>(null);
 
     const loadExistingAvatar = async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await supabase.auth.getSession();
           if (!session?.user) return;
-    
+          setUserId(session.user.id);
+
           const { data, error } = await supabase
             .from("profiles")
             .select("avatar_url")
@@ -53,6 +56,59 @@ const Navbar = () => {
         };
     }, [isMobileMenuOpen]);
 
+    useEffect(() => {
+        if (!userId) return;
+        const channel = supabase
+                .channel('notifications')
+                .on(
+                'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${userId}`,
+                    },
+                    async (payload) => {
+                        setNotifications((prev) => [payload.new, ...prev]);
+                        const { count } = await supabase
+                            .from('notifications')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('is_read', false);
+                        setUnreadCount(count ?? 0);
+                    }
+                )
+                .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userId]);
+
+    const [unreadCount, setUnreadCount] = useState<number>(0);
+
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            const { count } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            setUnreadCount(count ?? 0);
+        };
+        fetchUnreadCount();
+
+        const fetchNotifications = async () => {
+            const { data } = await supabase
+                .from('notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            setNotifications(data ?? []);
+        };
+
+        fetchNotifications();
+    }, []);
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setUser(null);
@@ -60,160 +116,108 @@ const Navbar = () => {
     };
 
     return (
-        <div className="navbar sticky top-0 z-50 bg-gray-900 border-b border-gray-700 shadow-lg">
-           
-            <div className="navbar-start">
-                <div className="lg:hidden relative mobile-menu-container">
-                    <button 
-                        className="btn btn-ghost text-white hover:bg-gray-700 hover:text-yellow-300" 
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        aria-label="Menu de navigation"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
-                        </svg>
-                    </button>
-                    
-                    {isMobileMenuOpen && (
-                        <div className="absolute left-0 top-12 bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50">
-                            <div className="py-2">
-                                <a 
-                                    href="/" 
-                                    className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    🏠 Accueil
-                                </a>
-                                <a 
-                                    href="/about" 
-                                    className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    ℹ️ À propos
-                                </a>
-                                <a 
-                                    href="/contact" 
-                                    className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    📞 Contact
-                                </a>
-                                <hr className="my-2 mx-4" />
-                                <a 
-                                    href="/search" 
-                                    className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    🔍 Rechercher
-                                </a>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="hidden lg:block">
-                    <a
-                        href="/"
-                        className="btn btn-ghost text-2xl font-bold
-                        text-white hover:text-yellow-300 hover:bg-gray-700
-                        transition-all duration-200
-                        flex items-center gap-2"
-                    >
-                        <span className="text-2xl">🛍️</span>
-                        <span className="font-extrabold">ShopIci</span>
-                    </a>
-                </div>
-            </div>
-
-            <div className="navbar-center lg:hidden">
-                <a
-                    href="/"
-                    className="btn btn-ghost text-xl font-bold
-                    text-white hover:text-yellow-300 hover:bg-gray-700
-                    transition-all duration-200
-                    flex items-center gap-2"
+        <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 shadow-lg w-full">
+        <div className="flex items-center justify-between px-6 py-2">
+            <div className="flex items-center gap-2">
+                <button 
+                    className="btn btn-ghost text-white hover:bg-gray-700 hover:text-yellow-300 lg:hidden" 
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    aria-label="Menu de navigation"
                 >
-                    <span className="text-xl">🛍️</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
+                    </svg>
+                </button>
+                <a href="/" className="flex items-center gap-2 text-2xl font-bold text-white hover:text-yellow-300">
+                    <span>🛍️</span>
                     <span className="font-extrabold">ShopIci</span>
                 </a>
             </div>
-           
-            
-            <div className="navbar-center hidden lg:flex">
-                <ul className=" menu-horizontal px-1 gap-2">
-                    <li>
-                        <a href="/" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
-                            Home
-                        </a>
-                    </li>
-                     <li>
-                        <a href="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
-                            Products
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/about" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
-                            About
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/contact" className="text-gray-100 hover:bg-blue-600 hover:text-white hover:shadow-lg rounded-lg transition-all duration-200 font-medium px-4 py-2">
-                            Contact
-                        </a>
-                    </li>
+
+            <div className="hidden lg:flex">
+                <ul className="flex gap-4">
+                    <li><a href="/" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Home</a></li>
+                    <li><a href="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Products</a></li>
+                    <li><a href="/about" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">About</a></li>
+                    <li><a href="/contact" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Contact</a></li>
                 </ul>
             </div>
-            
-            <div className="navbar-end">
-                <div className="form-control hidden xl:block mr-4">
+
+            <div className="flex items-center gap-8">
+                <div className="hidden xl:block">
                     <input 
                         type="text" 
                         placeholder="Rechercher des produits..." 
                         className="input input-bordered input-sm w-64 bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20" 
                     />
                 </div>
-
-                <div className="dropdown dropdown-end hidden sm:block mr-2">
-                    <div 
-                        tabIndex={0} 
-                        role="button" 
-                        className="btn btn-ghost btn-circle text-white hover:text-yellow-300 hover:bg-gray-700 transition-colors duration-200"
-                    >
-                        <div className="indicator">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                                />
-                            </svg>
-                            <span className="badge badge-primary badge-sm indicator-item">3</span>
-                        </div>
-                    </div>
-
+                <div className="indicator dropdown dropdown-end">
                     <div
                         tabIndex={0}
-                        className="card card-compact dropdown-content bg-white z-50 mt-3 w-64 shadow-xl border border-gray-200"
+                        role="button"
+                        className="relative group"
                     >
-                        <div className="card-body">
-                            <span className="text-lg font-bold text-gray-800">3 items</span>
-                            <span className="text-gray-600">Total: 99€</span>
-                            <div className="card-actions mt-4">
-                                <button className="btn btn-primary btn-block">
-                                    🛒 Show cart
-                                </button>
-                            </div>
-                        </div>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-7 w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M15 17h5l-1.405-1.405A2 2 0 0018 14V10a6 6 0 00-12 0v4a2 2 0 00-.595 1.595L5 17h5m5 0a2 2 0 100 4 2 2 0 000-4z"
+                            />
+                        </svg>
+                        <span className="badge badge-primary badge-sm indicator-item  bg-gradient-to-r blue-500  text-white shadow-lg border-0">
+                            {unreadCount}
+                        </span>
                     </div>
+                    <ul className="menu menu-sm dropdown-content bg-gray-100/95 backdrop-blur-md rounded-xl z-50 mt-3 p-3 shadow-xl border border-gray-300 min-w-[300px] animate-fade-in">
+                    {notifications.filter(n => n.is_read === false).length === 0 ? (
+                        <li className="text-center text-gray-500 py-8 italic tracking-wide">Aucune notification</li>
+                    ) : (
+                        notifications.filter(n => n.is_read === false).map((notification, idx, arr) => {
+                            let icon, iconBg;
+                            switch(notification.type) {
+                                case 'Message':
+                                    icon = (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
+                                    );
+                                    iconBg = 'bg-blue-100';
+                                    break;
+                                case 'Alerte':
+                                    icon = (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12c0 4.418-4.03 8-9 8s-9-3.582-9-8 4.03-8 9-8 9 3.582 9 8z" /></svg>
+                                    );
+                                    iconBg = 'bg-blue-200';
+                                    break;
+                                default:
+                                    icon = (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2 2 0 0018 14V10a6 6 0 00-12 0v4a2 2 0 00-.595 1.595L5 17h5m5 0a2 2 0 100 4 2 2 0 000-4z" /></svg>
+                                    );
+                                    iconBg = 'bg-gray-200';
+                            }
+                            return (
+                                <li key={notification.id}>
+                                    <a href={`/conversations/${notification.conversation_id}`} className="flex items-center gap-4 p-4 text-gray-800 hover:bg-blue-100 hover:shadow-lg rounded-xl transition-all duration-200 group relative">
+                                        <span className={`inline-block w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center shadow group-hover:scale-105 transition-transform duration-200`}>
+                                            {icon}
+                                        </span>
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="font-semibold text-base truncate leading-tight">{notification.type}</span>
+                                            <span className="text-xs text-gray-500 group-hover:text-gray-700 mt-1">{new Date(notification.created_at).toLocaleString()}</span>
+                                        </div>
+                                        <span className="absolute left-4 right-4 -bottom-2 h-px bg-gray-300" style={{display: idx === arr.length-1 ? 'none' : 'block'}}></span>
+                                    </a>
+                                </li>
+                            );
+                        })
+                    )}
+                    </ul>
                 </div>
-
                 <div className="dropdown dropdown-end">
                     <div 
                         tabIndex={0} 
@@ -323,6 +327,19 @@ const Navbar = () => {
                 </div>
             </div>
         </div>
+        {/* Menu mobile */}
+        {isMobileMenuOpen && (
+            <div className="absolute left-0 top-12 bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50">
+                <div className="py-2">
+                    <a href="/" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🏠 Accueil</a>
+                    <a href="/about" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">ℹ️ À propos</a>
+                    <a href="/contact" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">📞 Contact</a>
+                    <hr className="my-2 mx-4" />
+                    <a href="/search" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🔍 Rechercher</a>
+                </div>
+            </div>
+        )}
+    </nav>
     );
 };
 

@@ -26,7 +26,6 @@ const ProductDetails: React.FC = () => {
     const [userId, setUserId] = useState<string>("");
     const [sellerId, setSellerId] = useState<string>("");
 
-    // Ajout des hooks pour la popup
     const predefinedMessages = [
         "Bonjour, ce produit est-il toujours disponible ?",
         "Je suis intéressé par votre annonce.",
