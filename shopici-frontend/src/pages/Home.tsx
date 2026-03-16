@@ -93,7 +93,7 @@ const Home = () => {
 
   const getUsername = async () => {
     try {
-      console.log("Getting session...");
+   
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -101,12 +101,10 @@ const Home = () => {
         return;
       }
 
-      console.log("Session data:", sessionData);
       const user = sessionData?.session?.user;
-      console.log("Session user:", user);
       
       if (user) {
-        console.log("User found:", user.id);
+      
         const { data, error } = await supabase
           .from('profiles')
           .select('username')
@@ -118,14 +116,13 @@ const Home = () => {
           return;
         }
 
-        console.log("Fetched username:", data?.username);
+       
         if (data?.username) setUsername(data.username);
       }
     } catch (err) {
       console.error("Unexpected error in getUsername:", err);
     }
   }
-    console.log("Fetching username...");
     getUsername().catch((err) => console.error("getUsername failed:", err));
   }, []);
 

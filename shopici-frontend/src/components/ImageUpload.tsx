@@ -11,7 +11,7 @@ const ImageUpload = () => {
 
       var parts = filename.split(".");
       const fileType = parts[parts.length - 1];
-      console.log("fileType", fileType); 
+    
 
       setImage(files[0]);
     }
@@ -21,7 +21,7 @@ const ImageUpload = () => {
     inputFile.current.click();
   };
 
-  console.log("imageimage", image);
+
   return (
     <div>
       <input

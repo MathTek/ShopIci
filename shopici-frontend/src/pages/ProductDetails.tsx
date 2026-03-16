@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from "../services/supabaseClient";
+import { supabase, insertNewFavorite, deleteFavorite, getFavoritesByUserId, getUserId } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
 
 
@@ -48,6 +48,14 @@ const ProductDetails: React.FC = () => {
                     .single();
                 if (error) throw error;
                 setProduct(data);
+
+
+                const favorites = await getFavoritesByUserId(await getUserId());
+
+
+                if (favorites.some(fav => fav.product_id === productId)) {
+                    setIsFavorite(true);
+            }
             } catch (error) {
                 console.error("Error:", error);
             } finally {
@@ -91,15 +99,12 @@ const ProductDetails: React.FC = () => {
                 .eq('product_id', productId)
                 .single();
 
-            // if (error) {
-            //     console.error("Error checking existing conversation:", error);
-            //     return;
-            // }
+         
 
             if (existingConversation) {
                 navigate(`/conversations/${existingConversation.id}`);
             } else {
-                console.log("No existing conversation found. Creating a new one...");
+               
                 setConversationPopupOpen(true);
             }
 
@@ -147,6 +152,31 @@ const ProductDetails: React.FC = () => {
         }
     };
 
+    const handleFavoriteToggle = async () => {
+        setIsFavorite(!isFavorite);
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+
+            const userId = session.user.id;
+            
+
+            if (!isFavorite) {
+                await insertNewFavorite(userId, productId!);
+            } else {
+                await deleteFavorite(userId, productId!);
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+        }
+
+        return;
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
             <span className="relative flex h-12 w-12">
@@ -180,7 +210,7 @@ const ProductDetails: React.FC = () => {
                             disabled={sendLoading}
                             onClick={async () => {
                                 setSendLoading(true);
-                                console.log("Starting conversation with message:", selectedMessage);
+                              
                                 setConversationPopupOpen(false);
                                 setSendLoading(false);
                                 setIsSend(true);
@@ -203,7 +233,6 @@ const ProductDetails: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200">
-            {/* Overlay supprimé pour sobriété et cohérence */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 lg:py-12">
        
                 <button 
@@ -256,6 +285,22 @@ const ProductDetails: React.FC = () => {
                                 className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all"
                             >
                                 Add to cart
+                            </button>
+                            <button
+                                onClick={handleFavoriteToggle}
+                                className={`p-4 rounded-2xl border border-white/10 transition-all ${isFavorite ? 'bg-red-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                            >
+                                {isFavorite ? (
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                )}
+                                <span className="text-slate-400 text-sm">
+                                </span>
                             </button>
                         </div>
                     </div>
