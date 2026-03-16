@@ -34,10 +34,10 @@ const Profile = () => {
 
       if (data?.avatar_url) {
         setAvatarUrl(data.avatar_url);
-        console.log("✅ Avatar loaded:", data.avatar_url);
+    
       }
     } catch (err) {
-      console.log("No existing avatar found");
+
       setIsAuthenticated(false);
     }
   };
@@ -106,8 +106,8 @@ const Profile = () => {
       }
       
       setAvatarUrl(newAvatarUrl);
-      console.log("✅ Avatar sauvegardé:", newAvatarUrl);
-      showNotification('success', "🎉 Avatar mis à jour avec succès!");
+ 
+      showNotification('success', "Avatar mis à jour avec succès!");
 
     } catch (err: any) {
       console.error("Erreur:", err);

@@ -32,8 +32,7 @@ const Signup = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData?.session?.user;
 
-      console.log("User after signup:", user);
-      console.log("Username, role:", username, role);
+    
 
       if (user) {
         const { error: profileError } = await supabase

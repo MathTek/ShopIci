@@ -29,9 +29,9 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
     );
 
     useEffect(() => {
-        console.log('isForUpdate:', isForUpdate);
+     
         if (isForUpdate && initialData) {
-            console.log('Setting initial data for update:', initialData);
+        
             setFormData({
                 title: initialData.title || '',
                 description: initialData.description || '',
@@ -40,7 +40,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 image: null
             });
             setExistingImageUrl(initialData.image_urls || null);
-            console.log('Form data after setting initial data:', formData);
+        
         }
     }, [isForUpdate, initialData]);
 
@@ -118,7 +118,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                 const fileExt = formData.image.name.split('.').pop();
                 const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
                 
-                console.log('Uploading image:', fileName);
+
                 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('item-images')
@@ -139,7 +139,7 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
                     .getPublicUrl(fileName);
                 
                 imageUrl = urlData.publicUrl;
-                console.log('Image uploaded successfully:', imageUrl);
+              
                 
             } catch (error) {
                 console.error('Error during image upload:', error);
