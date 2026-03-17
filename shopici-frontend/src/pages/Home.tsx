@@ -162,18 +162,30 @@ const Home = () => {
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center animate-slide-up">
             <button
-              className="btn-gradient text-lg px-8 py-4 hover:shadow-2xl transform hover:scale-110 transition-all duration-500 rounded-2xl"
+              className="btn-gradient 
+                        text-lg sm:text-xl font-semibold
+                        px-8 sm:px-10 py-4 sm:py-5 
+                        rounded-2xl
+                        shadow-xl hover:shadow-2xl
+                        hover:scale-[1.04]
+                        active:scale-[0.97]
+                        transition-all duration-200
+                        cursor-pointer
+                        animate-bounce-subtle"
               onClick={() => {
                 navigate("/products");
               }}
             >
-              🛒 Start Shopping
+              Start Shopping
             </button>
-            <button className="btn btn-outline btn-lg px-8 py-4 rounded-2xl hover:btn-secondary transition-all duration-300"
+            <button className="px-8 py-4 rounded-2xl 
+             border border-white/10 text-white/80
+             hover:bg-white/10 hover:text-white
+             transition-all duration-300 cursor-pointer"
             onClick={() => {
               navigate("/about");
             }}>
-              📖 Learn More
+              Learn More
             </button>
           </div>
 
