@@ -87,218 +87,170 @@ export default function ProfileForm() {
   };
 
 return (
-    <div className="card-gradient w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl hover:shadow-3xl transition-all duration-500">
-    
-        <div className="flex flex-col sm:flex-row sm:items-start md:items-center sm:justify-between mb-6 sm:mb-8 gap-4 sm:gap-2 lg:gap-4">
-          <div className=" sm:text-left flex-1">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gradient mb-2">Profile Settings</h2>
-            <p className="text-sm sm:text-base text-base-content/70">
-              {isEditing ? "Update your information" : "View your profile details"}
-            </p>
-          </div>
-          <div className="flex justify-center sm:justify-end">
-            <button
-              type="button"
-              onClick={() => setIsEditing(!isEditing)}
-              className={`btn btn-sm sm:btn-md lg:btn-lg xl:btn-lg ${isEditing ? 'btn-success' : 'btn-primary'} shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 w-full sm:w-auto max-w-xs sm:max-w-none`}
-              aria-label="Edit profile"
-            >
-            {isEditing ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 md:h-5 md:w-5 lg:h-6 lg:w-6 xl:h-7 xl:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <MdModeEditOutline className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-5 md:w-5 lg:h-6 lg:w-6 xl:h-7 xl:w-7" />
-            )}
-            </button>
-          </div>
-        </div>
+  <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8 transition-all duration-300">
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-         
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        Username
-                    </span>
-                </label>
-                <input
-                    type="text"
-                    placeholder="Enter your username"
-                    className={`input input-bordered w-full rounded-lg sm:rounded-xl h-12 sm:h-14 text-sm sm:text-base transition-all duration-300 ${
-                        isEditing 
-                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
-                            : 'bg-base-300/30 cursor-not-allowed'
+    {/* HEADER */}
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+
+      <div className="flex-1">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+          Profile Settings
+        </h2>
+        <p className="text-sm text-white/50 mt-1">
+          {isEditing ? "Update your information" : "View your profile details"}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setIsEditing(!isEditing)}
+        className={`flex items-center justify-center w-10 h-10 rounded-lg
+                    transition-all duration-200
+                    ${isEditing 
+                      ? "bg-green-500/10 text-green-400 hover:bg-green-500/20" 
+                      : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
-                    value={username} 
-                    onChange={(e) => setUsername(e.target.value)}
-                    disabled={!isEditing}
-                />
-            </div>
-            
-           
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Full Name
-                    </span>
-                </label>
-                <input
-                    type="text"
-                    placeholder="Enter your full name"
-                    className={`input input-bordered w-full rounded-lg sm:rounded-xl h-12 sm:h-14 text-sm sm:text-base transition-all duration-300 ${
-                        isEditing 
-                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
-                            : 'bg-base-300/30 cursor-not-allowed'
-                    }`}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    disabled={!isEditing} 
-                />
-            </div>
+      >
+        {isEditing ? "✓" : <MdModeEditOutline className="h-4 w-4" />}
+      </button>
 
-          
-            <div className="form-control">  
-              <label className="label">
-                <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-3l-4 4z" />
-                  </svg>
-                  Bio
-                </span>
-              </label>
-              <textarea
-                placeholder="Tell us about yourself"
-                className={`textarea textarea-bordered text-base-content placeholder:text-base-content/60 w-full rounded-lg sm:rounded-xl h-20 sm:h-24 text-sm sm:text-base transition-all duration-300 ${
-                  isEditing 
-                    ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
-                    : 'bg-base-300/30 cursor-not-allowed'
-                }`}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                disabled={!isEditing}
-              />
-            </div>
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        Email Address
-                    </span>
-                </label>
-                <input
-                    type="email"
-                    placeholder="Enter your email address"
-                    className={`input input-bordered w-full rounded-lg sm:rounded-xl h-12 sm:h-14 text-sm sm:text-base transition-all duration-300 ${
-                        isEditing 
-                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
-                            : 'bg-base-300/30 cursor-not-allowed'
-                    }`}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={!isEditing}
-                />
-            </div>
-
-           
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        Phone Number
-                    </span>
-                </label>
-                <input
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    className={`input input-bordered w-full rounded-lg sm:rounded-xl h-12 sm:h-14 text-sm sm:text-base transition-all duration-300 ${
-                        isEditing 
-                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80' 
-                            : 'bg-base-300/30 cursor-not-allowed'
-                    }`}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={!isEditing}
-                />
-            </div>
-
-          
-
-            <div className="form-control">
-                <label className="label">
-                    <span className="label-text text-sm sm:text-base font-semibold text-base-content/80 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Address
-                    </span>
-                </label>
-                <input
-                    type="text"
-                    placeholder="Enter your address"
-                    className={`input input-bordered w-full rounded-lg sm:rounded-xl h-12 sm:h-14 text-sm sm:text-base transition-all duration-300 ${
-                        isEditing
-                            ? 'bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80'
-                            : 'bg-base-300/30 cursor-not-allowed'
-                    }`}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    disabled={!isEditing}
-                />
-            </div>
-
-      
-            {isEditing && (
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
-                    <button
-                        type="submit"
-                        className={`btn-gradient flex-1 h-12 sm:h-14 text-sm sm:text-base lg:text-lg font-semibold rounded-lg sm:rounded-xl ${
-                            loading ? "loading" : ""
-                        } hover:shadow-2xl transform hover:scale-105 transition-all duration-300`}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <>
-                                <span className="loading loading-spinner loading-sm sm:loading-md mr-2"></span>
-                                <span className="text-xs sm:text-sm lg:text-base">Saving...</span>
-                            </>
-                        ) : (
-                            <>
-                                <span className="text-xs sm:text-sm lg:text-base">Save Changes</span>
-                            </>
-                        )}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setIsEditing(false)}
-                        className="btn bg-red-500 flex-1 h-12 sm:h-14 text-xs sm:text-sm lg:text-base font-semibold rounded-lg sm:rounded-xl hover:scale-105 transition-all duration-300"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            )}
-
-     
-            {success && (
-                <div className="alert alert-success animate-fade-in rounded-lg sm:rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold text-sm sm:text-base">Profile updated successfully! 🎉</span>
-                </div>
-            )}
-        </form>
     </div>
+
+    {/* FORM */}
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+      {/* USERNAME */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/50 font-medium">Username</label>
+        <input
+          type="text"
+          placeholder="Enter your username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* FULL NAME */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/50 font-medium">Full Name</label>
+        <input
+          type="text"
+          placeholder="Enter your full name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* BIO */}
+      <div className="space-y-2 sm:col-span-2">
+        <label className="text-xs text-white/50 font-medium">Bio</label>
+        <textarea
+          placeholder="Tell us about yourself"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40 min-h-[100px]
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* EMAIL */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/50 font-medium">Email</label>
+        <input
+          type="email"
+          placeholder="Enter your email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* PHONE */}
+      <div className="space-y-2">
+        <label className="text-xs text-white/50 font-medium">Phone</label>
+        <input
+          type="tel"
+          placeholder="Enter your phone number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* ADDRESS */}
+      <div className="space-y-2 sm:col-span-2">
+        <label className="text-xs text-white/50 font-medium">Address</label>
+        <input
+          type="text"
+          placeholder="Enter your address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          disabled={!isEditing}
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10
+                     text-sm text-white placeholder-white/40
+                     focus:outline-none focus:border-indigo-400 focus:bg-white/10
+                     transition disabled:opacity-60 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {/* ACTIONS */}
+      {isEditing && (
+        <div className="sm:col-span-2 flex flex-col sm:flex-row gap-3 pt-4">
+
+          <button
+            type="submit"
+            className="flex-1 px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600
+                       text-white text-sm font-medium
+                       transition-all duration-200
+                       hover:shadow-lg hover:scale-[1.02]
+                       active:scale-[0.98]"
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsEditing(false)}
+            className="flex-1 px-6 py-3 rounded-xl border border-white/10 text-white/70
+                       hover:bg-white/10 hover:text-white
+                       transition-all duration-200"
+          >
+            Cancel
+          </button>
+
+        </div>
+      )}
+
+      {/* SUCCESS */}
+      {success && (
+        <div className="sm:col-span-2 rounded-xl border border-green-400/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+          Profile updated successfully 🎉
+        </div>
+      )}
+
+    </form>
+  </div>
 );
 }

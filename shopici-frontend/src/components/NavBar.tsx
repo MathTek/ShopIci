@@ -8,6 +8,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const [avatarUrl, setAvatarUrl] = useState("");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [userId, setUserId] = useState<string | null>(null);
     const { totalItems } = useCart();
@@ -119,11 +120,11 @@ const Navbar = () => {
 
     return (
         <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-700 shadow-lg w-full">
-        <div className="flex items-center justify-between px-6 py-2">
+        <div className="flex items-center justify-between px-6 py-2 relative">
             <div className="flex items-center gap-2">
                 <button 
                     className="btn btn-ghost text-white hover:bg-gray-700 hover:text-yellow-300 lg:hidden" 
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(!isMobileMenuOpen); }}
                     aria-label="Menu de navigation"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,13 +137,38 @@ const Navbar = () => {
                 </Link>
             </div>
 
-            <div className="hidden lg:flex">
-                <ul className="flex gap-4">
-                    <li><Link to="/" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Home</Link></li>
-                    <li><Link to="/products" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Products</Link></li>
-                    <li><Link to="/about" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">About</Link></li>
-                    <li><Link to="/contact" className="text-gray-100 hover:bg-blue-600 hover:text-white rounded-lg px-4 py-2">Contact</Link></li>
-                </ul>
+            <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
+            <ul className="flex items-center gap-2 whitespace-nowrap">
+
+                {[
+                { name: "Home", path: "/" },
+                { name: "Products", path: "/products" },
+                { name: "About", path: "/about" },
+                { name: "Contact", path: "/contact" },
+                ].map((item) => (
+                <li key={item.name}>
+                    <Link
+                    to={item.path}
+                    className="px-4 py-2 rounded-lg
+                                text-sm font-medium text-white/70
+                                hover:text-white
+                                hover:bg-white/5
+                                transition-all duration-200
+                                relative group"
+                    >
+                    {item.name}
+
+                    {}
+                    <span className="absolute left-2 right-2 -bottom-1 h-[2px] 
+                                    bg-gradient-to-r from-indigo-400 to-purple-400
+                                    scale-x-0 group-hover:scale-x-100
+                                    origin-left transition-transform duration-300">
+                    </span>
+                    </Link>
+                </li>
+                ))}
+
+            </ul>
             </div>
 
             <div className="flex items-center gap-8">
@@ -221,7 +247,7 @@ const Navbar = () => {
                     </ul>
                 </div>
 
-                <Link to="/cart" className="btn btn-ghost btn-circle text-white mr-3 hidden lg:flex items-center cursor-pointer">
+                <Link to="/cart" className="btn btn-ghost btn-circle text-white mr-3 lg:flex items-center cursor-pointer">
                     <div className="indicator">
                         <span className="inline-flex items-center justify-center w-7 h-7 rounded-full ">
                             <svg className="h-5 w-5 text-white-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -240,7 +266,7 @@ const Navbar = () => {
                     <div 
                         tabIndex={0} 
                         role="button" 
-                        className="btn btn-ghost btn-circle avatar hover:bg-gray-700 transition-colors duration-200"
+                        className="btn btn-ghost btn-circle avatar hover:bg-gray-200 transition-colors duration-200"
                     >
                         <div className="w-10 rounded-full ring-2 ring-gray-600 hover:ring-blue-400 transition-all duration-200">
                             <img
@@ -357,16 +383,45 @@ const Navbar = () => {
         </div>
         {/* Menu mobile */}
         {isMobileMenuOpen && (
-            <div className="absolute left-0 top-12 bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50">
-                <div className="py-2">
-                    <Link to="/" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🏠 Accueil</Link>
-                    <Link to="/about" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">ℹ️ À propos</Link>
-                    <Link to="/contact" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">📞 Contact</Link>
-                    <hr className="my-2 mx-4" />
-                    <Link to="/search" className="block px-4 py-3 text-gray-800 hover:bg-blue-600 hover:text-white font-medium transition-colors">🔍 Rechercher</Link>
-                </div>
-            </div>
-        )}
+  <div className="absolute left-4 right-4 top-18 z-50 animate-fade-in">
+
+    <div className="rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl px-6 py-4">
+
+      <div className="flex flex-col gap-4">
+
+        {/* LINK */}
+        <Link to="/" className="group w-fit">
+          <span className="text-sm text-white/70 group-hover:text-white transition">
+            Home
+          </span>
+          <span className="block h-[2px] w-0 group-hover:w-full bg-gradient-to-r from-indigo-400 to-purple-400 transition-all duration-300 rounded-full" />
+        </Link>
+
+        <Link to="/products" className="group w-fit">
+          <span className="text-sm text-white/70 group-hover:text-white transition">
+            Products
+          </span>
+          <span className="block h-[2px] w-0 group-hover:w-full bg-gradient-to-r from-indigo-400 to-purple-400 transition-all duration-300 rounded-full" />
+        </Link>
+
+        <Link to="/about" className="group w-fit">
+          <span className="text-sm text-white/70 group-hover:text-white transition">
+            About
+          </span>
+          <span className="block h-[2px] w-0 group-hover:w-full bg-gradient-to-r from-indigo-400 to-purple-400 transition-all duration-300 rounded-full" />
+        </Link>
+
+        <Link to="/contact" className="group w-fit">
+          <span className="text-sm text-white/70 group-hover:text-white transition">
+            Contact
+          </span>
+          <span className="block h-[2px] w-0 group-hover:w-full bg-gradient-to-r from-indigo-400 to-purple-400 transition-all duration-300 rounded-full" />
+        </Link>
+
+      </div>
+    </div>
+  </div>
+)}
     </nav>
     );
 };

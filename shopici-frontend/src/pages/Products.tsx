@@ -114,85 +114,166 @@ const Products = () => {
                     <div className="mb-8">
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                             <div className="w-full lg:w-1/2 flex justify-start">
-                                <div className="max-w-xl text-left">
+                                <div className="max-w-xl text-left space-y-4">
 
-                                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-gradient-to-r from-white via-cyan-200 to-blue-300 bg-clip-text text-transparent drop-shadow-2xl relative">
-                                        Products Catalog
-                                        <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-cyan-200/5 to-blue-300/5 blur-2xl -z-10"></div>
-                                    </h1>
-                                    <p className="text-xl text-white/90 leading-relaxed font-light">
-                                        Discover amazing products from our <span className="font-semibold text-cyan-300">community</span>
-                                    </p>
+                                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white leading-tight">
+                                    Products{" "}
+                                    <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                                    Catalog
+                                    </span>
+                                </h1>
+
+                                <p className="text-base sm:text-lg text-white/60 leading-relaxed">
+                                    Discover amazing products from our{" "}
+                                    <span className="text-white font-medium">
+                                    community
+                                    </span>
+                                </p>
+
                                 </div>
                             </div>
 
               
                             <div className="w-full lg:w-auto">
-                                <div className="relative">
+                                <div className="relative group">
+
+                                    {/* glow background */}
+                                    <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-md transition duration-300" />
+
+                                    {/* input container */}
+                                    <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 transition-all duration-300 group-focus-within:border-indigo-400 group-focus-within:bg-white/10">
+
+                                    {/* icon */}
+                                    <div className="pl-2 text-white/40 group-focus-within:text-indigo-400 transition">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z" />
+                                        </svg>
+                                    </div>
+
+                                    {/* input */}
                                     <input
                                         type="text"
                                         placeholder="Search products..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full lg:w-80 px-4 py-3 pl-14 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300"
+                                        className="w-full lg:w-80 
+                                                px-3 py-3 pl-16
+                                                bg-transparent outline-none
+                                                text-sm text-white placeholder-white/40"
                                     />
+
+                                    {/* keyboard shortcut */}
+                                    <div className="hidden sm:flex items-center gap-1 mr-3 px-2 py-1 rounded-md border border-white/10 text-[11px] text-white/30">
+                                        ⌘K
+                                    </div>
+
+                                    </div>
                                 </div>
-                            </div>
+                                </div>
                         </div>
 
           
                         <div className="mt-6 flex flex-col lg:flex-row gap-4 items-start lg:items-center">
                
-                            <div className="flex flex-wrap gap-3">
-                                {categories.map(category => (
-                                    <button
-                                        key={category}
-                                        onClick={() => setSelectedCategory(category)}
-                                        className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 ${
-                                            selectedCategory === category
-                                                ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25'
-                                                : 'bg-white/10 backdrop-blur-md border border-white/20 text-white/70 hover:text-white hover:bg-white/20'
-                                        }`}
-                                    >
-                                        {getCategoryDisplayName(category)}
-                                    </button>
-                                ))}
+                            <div className="flex flex-wrap gap-2 sm:gap-3">
+
+                            {categories.map(category => {
+                                const isActive = selectedCategory === category;
+
+                                return (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className={`
+                                    px-4 sm:px-5 py-2 rounded-full
+                                    text-sm font-medium
+                                    transition-all duration-200
+                                    relative
+                                    ${isActive
+                                        ? "text-white bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 shadow-[0_0_20px_rgba(99,102,241,0.15)]"
+                                        : "text-white/60 hover:text-white border border-white/10 hover:bg-white/5"
+                                    }
+                                    cursor-pointer
+                                    `}
+                                >
+                                    {getCategoryDisplayName(category)}
+                                </button>
+                                );
+                            })}
+
                             </div>
 
                      
-                            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3">
-                                <span className="text-white/70 text-sm font-medium">Prix:</span>
+                            <div className="flex items-center gap-3 px-4 py-2 rounded-xl border border-white/10 bg-white/5">
+
+                            <span className="text-sm text-white/50 font-medium whitespace-nowrap">
+                                Price
+                            </span>
+
+                            <div className="flex items-center gap-2">
+
                                 <input
-                                    type="number"
-                                    placeholder="Min"
-                                    value={priceRange.min}
-                                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                                    className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                                type="number"
+                                placeholder="Min"
+                                value={priceRange.min}
+                                onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                                className="w-20 px-2 py-2 rounded-lg 
+                                            bg-transparent border border-white/10
+                                            text-sm text-white placeholder-white/40
+                                            focus:outline-none focus:border-indigo-400
+                                            transition"
                                 />
-                                <span className="text-white/50">-</span>
+
+                                <span className="text-white/30">—</span>
+
                                 <input
-                                    type="number"
-                                    placeholder="Max"
-                                    value={priceRange.max}
-                                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                                    className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                                type="number"
+                                placeholder="Max"
+                                value={priceRange.max}
+                                onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                                className="w-20 px-3 py-2 rounded-lg 
+                                            bg-transparent border border-white/10
+                                            text-sm text-white placeholder-white/40
+                                            focus:outline-none focus:border-indigo-400
+                                            transition"
                                 />
-                                <span className="text-white/70 text-sm">€</span>
+
+                            </div>
+
+                            <span className="text-sm text-white/40">€</span>
+
                             </div>
 
                         
-                            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3">
-                                <span className="text-white/70 text-sm font-medium">Trier par:</span>
+                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5">
+
+                            <span className="text-sm text-white/50 font-medium whitespace-nowrap">
+                                Sort by
+                            </span>
+
+                            <div className="relative">
                                 <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="bg-white/10 border border-white/20 rounded-lg text-white text-sm px-3 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="appearance-none bg-transparent border border-white/10 
+                                            text-sm text-white px-4 pr-12 py-2 rounded-lg
+                                            focus:outline-none focus:border-indigo-400
+                                            transition cursor-pointer"
                                 >
-                                    <option value="newest" className="bg-gray-800">Plus récent</option>
-                                    <option value="oldest" className="bg-gray-800">Plus ancien</option>
-                                    <option value="price-low" className="bg-gray-800">Prix croissant</option>
-                                    <option value="price-high" className="bg-gray-800">Prix décroissant</option>
+                                <option value="newest" className="bg-gray-900">Newest</option>
+                                <option value="oldest" className="bg-gray-900">Oldest</option>
+                                <option value="price-low" className="bg-gray-900">Price ↑</option>
+                                <option value="price-high" className="bg-gray-900">Price ↓</option>
                                 </select>
+
+                                {/* custom arrow */}
+                                <div className="pointer-events-none absolute inset-y-0 flex left-16 items-center text-white/40">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                                </div>
+                            </div>
+
                             </div>
 
                         
