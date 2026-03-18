@@ -186,11 +186,11 @@ const Navbar = () => {
                         className="relative group"
                     >
                         <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-7 w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200 cursor-pointer"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
                         >
                             <path
                                 strokeLinecap="round"
@@ -385,7 +385,7 @@ const Navbar = () => {
         {isMobileMenuOpen && (
   <div className="absolute left-4 right-4 top-18 z-50 animate-fade-in">
 
-    <div className="rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl px-6 py-4">
+    <div className="rounded-2xl backdrop-blur-xl bg-white/0 border border-white/13 shadow-4xl px-6 py-4">
 
       <div className="flex flex-col gap-4">
 
