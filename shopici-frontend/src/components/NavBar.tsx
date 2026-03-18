@@ -131,10 +131,15 @@ const Navbar = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
                     </svg>
                 </button>
-                <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-white hover:text-yellow-300">
-                    <span>🛍️</span>
-                    <span className="font-extrabold">ShopIci</span>
-                </Link>
+                    <Link
+                    to="/"
+                    className="flex items-center gap-1 sm:gap-2 text-lg sm:text-xl lg:text-2xl font-bold text-white hover:text-yellow-300 transition-colors duration-200"
+                    >
+                    <span className="text-base sm:text-lg lg:text-xl">🛍️</span>
+                    <span className="font-extrabold tracking-tight">
+                        ShopIci
+                    </span>
+                    </Link>
             </div>
 
             <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2">
@@ -187,7 +192,7 @@ const Navbar = () => {
                     >
                         <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200 text-white mr-3 lg:flex items-center cursor-pointer"
+                        className="inline-flex h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200 text-white mr-3 lg:flex "
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -199,7 +204,7 @@ const Navbar = () => {
                                 d="M15 17h5l-1.405-1.405A2 2 0 0018 14V10a6 6 0 00-12 0v4a2 2 0 00-.595 1.595L5 17h5m5 0a2 2 0 100 4 2 2 0 000-4z"
                             />
                         </svg>
-                        <span className="badge badge-primary badge-sm indicator-item  bg-gradient-to-r blue-500  text-white shadow-lg border-0">
+                        <span className="badge badge-primary badge-sm indicator-item  bg-gradient-to-r blue-500  text-white shadow-lg lg-flex border-0">
                             {unreadCount}
                         </span>
                     </div>
