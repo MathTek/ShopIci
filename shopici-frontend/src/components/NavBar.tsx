@@ -187,7 +187,7 @@ const Navbar = () => {
                     >
                         <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200 cursor-pointer"
+                        className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-white group-hover:text-yellow-300 drop-shadow-lg transition-colors duration-200 text-white mr-3 lg:flex items-center cursor-pointer"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
