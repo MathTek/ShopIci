@@ -110,3 +110,35 @@ export const getFavoritesByUserId = async (userId) => {
     }
     return data;
 }
+
+export const addAppreciation = async (productId, userId, note, comment) => {
+    const { error } = await supabase
+        .from('product_appreciation')
+        .insert({
+            product_id: productId,
+            user_id: userId,
+            note,
+            comment
+        });
+
+    if (error) {
+        console.error('Error adding appreciation:', error);
+        return false;
+    }
+
+    return true;
+};
+
+export const getAppreciationsByProductId = async (productId) => {
+    const { data, error } = await supabase
+        .from('product_appreciation')
+        .select('*')
+        .eq('product_id', productId);
+
+    if (error) {
+        console.error('Error fetching appreciations:', error);
+        return [];
+    }
+    console.log('Appreciations fetched from database:', data);
+    return data;
+};
