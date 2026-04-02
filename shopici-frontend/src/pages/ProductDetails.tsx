@@ -90,12 +90,11 @@ const ProductDetails: React.FC = () => {
                     filter: `product_id=eq.${productId}`
                 },
                 (payload) => {
-                    console.log('New appreciation received:', payload);
                     setAppreciations(prev => [...prev, payload.new]);
                 }
             )
-            .subscribe((status) => {
-                console.log('Subscription status:', status);
+            .subscribe(() => {
+                // Intentionally left blank: subscription status is not logged to avoid noisy or sensitive logs.
             });
 
         return () => {
