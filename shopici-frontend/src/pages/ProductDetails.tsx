@@ -105,22 +105,35 @@ const ProductDetails: React.FC = () => {
 
     useEffect(() => {
         const loadUsernames = async () => {
+            if (appreciations.length === 0) return;
+
+            // Collect and deduplicate user IDs that are missing from the usernames state
+            const missingUserIds = Array.from(
+                new Set(
+                    appreciations
+                        .map(appreciation => appreciation.user_id)
+                        .filter(userId => !usernames[userId])
+                )
+            );
+
+            if (missingUserIds.length === 0) return;
+
+            // Fetch all missing usernames concurrently
+            const usersData = await Promise.all(
+                missingUserIds.map(userId => getUserNameById(userId))
+            );
+
             const usernamesMap: { [key: string]: string } = {};
-            
-            for (const appreciation of appreciations) {
-                if (!usernames[appreciation.user_id]) {
-                    const userData = await getUserNameById(appreciation.user_id);
-                    usernamesMap[appreciation.user_id] = userData?.username || 'Anonymous';
-                }
-            }
-            
-            if (Object.keys(usernamesMap).length > 0) {
-                setUsernames(prev => ({ ...prev, ...usernamesMap }));
-            }
+            missingUserIds.forEach((userId, index) => {
+                const userData = usersData[index];
+                usernamesMap[userId] = userData?.username || 'Anonymous';
+            });
+
+            setUsernames(prev => ({ ...prev, ...usernamesMap }));
         };
-        
+
         loadUsernames();
-    }, [appreciations]);
+    }, [appreciations, usernames]);
 
     const handleShare = async () => {
         const shareData = {
