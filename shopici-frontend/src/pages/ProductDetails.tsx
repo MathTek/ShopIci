@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase, insertNewFavorite, deleteFavorite, getFavoritesByUserId, getUserId } from "../services/supabaseClient";
+import { supabase, insertNewFavorite, deleteFavorite, getFavoritesByUserId, getUserId, addAppreciation, getAppreciationsByProductId, getUserNameById } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
 
 
@@ -13,6 +13,15 @@ interface Product {
     image_urls?: string;
     created_at: string;
     user_id: string;
+}
+
+interface Appreciation {
+    id: string;
+    product_id: string;
+    user_id: string;
+    note: number;
+    comment?: string;
+    created_at: string;
 }
 
 const ProductDetails: React.FC = () => {
@@ -37,6 +46,11 @@ const ProductDetails: React.FC = () => {
     const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
     const [sendLoading, setSendLoading] = useState(false);
     const { addItem } = useCart();
+    const [hoverRating, setHoverRating] = useState(0);
+    const [note, setNote] = useState<number>(0);
+    const [comment, setComment] = useState<string>("");
+    const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
+    const [usernames, setUsernames] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -48,6 +62,8 @@ const ProductDetails: React.FC = () => {
                     .single();
                 if (error) throw error;
                 setProduct(data);
+
+                setAppreciations(await getAppreciationsByProductId(productId!));
 
 
                 const favorites = await getFavoritesByUserId(await getUserId());
@@ -64,6 +80,68 @@ const ProductDetails: React.FC = () => {
         };
         fetchProductDetails();
     }, [productId]);
+
+    useEffect(() => {
+        if (!productId) return;
+
+        const channel = supabase
+            .channel(`product-appreciation-${productId}`, {
+                config: {
+                    broadcast: { self: true },
+                },
+            })
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'product_appreciation',
+                    filter: `product_id=eq.${productId}`
+                },
+                (payload) => {
+                    setAppreciations(prev => [...prev, payload.new]);
+                }
+            )
+            .subscribe(() => {
+                // Intentionally left blank: subscription status is not logged to avoid noisy or sensitive logs.
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [productId]);
+
+    useEffect(() => {
+        const loadUsernames = async () => {
+            if (appreciations.length === 0) return;
+
+            // Collect and deduplicate user IDs that are missing from the usernames state
+            const missingUserIds = Array.from(
+                new Set(
+                    appreciations
+                        .map(appreciation => appreciation.user_id)
+                        .filter(userId => !usernames[userId])
+                )
+            );
+
+            if (missingUserIds.length === 0) return;
+
+            // Fetch all missing usernames concurrently
+            const usersData = await Promise.all(
+                missingUserIds.map(userId => getUserNameById(userId))
+            );
+
+            const usernamesMap: { [key: string]: string } = {};
+            missingUserIds.forEach((userId, index) => {
+                const userData = usersData[index];
+                usernamesMap[userId] = userData?.username || 'Anonymous';
+            });
+
+            setUsernames(prev => ({ ...prev, ...usernamesMap }));
+        };
+
+        loadUsernames();
+    }, [appreciations, usernames]);
 
     const handleShare = async () => {
         const shareData = {
@@ -175,6 +253,25 @@ const ProductDetails: React.FC = () => {
         }
 
         return;
+    };
+
+    const handleAddAppreciation = async (ratingValue: number, commentValue: string) => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+
+            const userId = session.user.id;
+
+            await addAppreciation(productId!, userId, ratingValue, commentValue);
+            setNote(0);
+            setComment("");
+            setHoverRating(0);
+        } catch (error) {
+            console.error("Error adding appreciation:", error);
+        }
     };
 
     if (loading) return (
@@ -338,6 +435,111 @@ const ProductDetails: React.FC = () => {
                             </div>
                         </div>
 
+                        <div className="flex justify-center mt-8">
+                            <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/10 backdrop-blur-sm w-full max-w-2xl">
+                                <div className='flex flex-col gap-4'>
+                                    <input
+                                        type="text"
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        placeholder="Leave a comment and a rating (1-5)"
+                                        aria-label="Leave a comment and a rating (1-5)"
+                                        className="w-full p-4 rounded-xl bg-slate-800/50 border border-white/20 text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    <div className="rating flex gap-1 justify-center">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <input
+                                                key={star}
+                                                type="radio"
+                                                name="rating-2"
+                                                value={star}
+                                                className={`mask mask-star-2 cursor-pointer transition-all ${hoverRating >= star || note >= star ? 'bg-orange-400' : 'bg-gray-400'}`}
+                                                aria-label={`${star} star`}
+                                                onMouseEnter={() => setHoverRating(star)}
+                                                onMouseLeave={() => setHoverRating(0)}
+                                                checked={note === star}
+                                                onChange={(e) => setNote(parseInt(e.target.value))}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="mt-4 px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-xl w-full"
+                                    onClick={() => handleAddAppreciation(note, comment)}
+                                    disabled={note < 1 || note > 5 || comment.trim() === ""}
+                                    aria-disabled={note < 1 || note > 5 || comment.trim() === ""}
+                                >
+                                    Submit
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center mt-8">
+                            <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/10 backdrop-blur-sm w-full max-w-2xl">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-white font-semibold text-xl">Reviews</h3>
+                                    {appreciations.length > 0 && (
+                                    <span className="text-xs text-slate-400 bg-white/10 rounded-full px-3 py-1">
+                                        {appreciations.length} review{appreciations.length > 1 ? "s" : ""}
+                                    </span>
+                                    )}
+                                </div>
+
+                                <div className="space-y-6 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+                                    {appreciations.length === 0 ? (
+                                    <p className="text-slate-400 text-sm text-center py-8">No reviews yet</p>
+                                    ) : (
+                                    appreciations.map((appreciation) => {
+                                        const colors = ['from-purple-500 to-blue-500', 'from-cyan-500 to-blue-500', 'from-pink-500 to-red-500'];
+                                        const colorIndex = String(appreciation.id)?.charCodeAt(0) % 3 || 0;
+                                        const username = usernames[appreciation.user_id] || 'Anonymous';
+                                        const userInitial = username?.charAt(0).toUpperCase() || 'U';
+                                        const date = new Date(appreciation.created_at).toDateString();
+
+                                        return (
+                                        <div
+                                            key={appreciation.id}
+                                            className="bg-slate-800/60 border border-white/10 rounded-lg p-4 hover:bg-slate-800/80 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                                                    {userInitial}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-white font-medium text-sm truncate">{username}</p>
+                                                </div>
+                                                <div className="flex gap-0.5">
+                                                    {[...Array(5)].map((_, index) => (
+                                                    <svg
+                                                        key={index}
+                                                        className={`w-4 h-4 ${index < appreciation.note ? 'text-orange-400' : 'text-slate-600'}`}
+                                                        fill="currentColor"
+                                                        viewBox="0 0 20 20"
+                                                    >
+                                                        <path d="M10 15l-5.878 3.09L5.64 12.545.763 9.455l6.06-.545L10 3l2.177 5.91 6.06.545-4.877 3.09 1.518 4.545L10 15z" />
+                                                    </svg>
+                                                    ))}
+                                                </div>
+                                                <div className="flex justify-center">
+                                                    <p className="text-slate-300 text-sm leading-relaxed text-center">
+                                                        {date}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {appreciation.comment && (
+                                                <p className="text-slate-300 text-sm leading-relaxed text-center">
+                                                {appreciation.comment}
+                                                </p>
+                                            )}
+                                        </div>
+                                        );
+                                    })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                   
                         <div className="space-y-6 mt-8">
                             <div className="flex justify-center">
@@ -348,18 +550,6 @@ const ProductDetails: React.FC = () => {
                                 </button>
                             </div>
                             
-                            <div className="flex items-center justify-between p-4 rounded-2xl border border-white/5 bg-slate-900/40">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white">
-                                        {product.user_id.substring(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="text-white font-medium text-sm">Verified seller</p>
-                                        <p className="text-slate-500 text-xs">Rating: ⭐️⭐️⭐️⭐️⭐️ (4.9/5)</p>
-                                    </div>
-                                </div>
-                                <button className="text-xs text-cyan-400 hover:underline">View profile</button>
-                            </div>
                         </div>
 
   
