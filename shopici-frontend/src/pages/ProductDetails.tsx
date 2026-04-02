@@ -15,6 +15,15 @@ interface Product {
     user_id: string;
 }
 
+interface Appreciation {
+    id: string;
+    product_id: string;
+    user_id: string;
+    note: number;
+    comment?: string;
+    created_at: string;
+}
+
 const ProductDetails: React.FC = () => {
     const { id: productId } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -40,7 +49,7 @@ const ProductDetails: React.FC = () => {
     const [hoverRating, setHoverRating] = useState(0);
     const [note, setNote] = useState<number>(0);
     const [comment, setComment] = useState<string>("");
-    const [appreciations, setAppreciations] = useState<any[]>([]);
+    const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
     const [usernames, setUsernames] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
