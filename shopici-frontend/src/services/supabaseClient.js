@@ -139,6 +139,5 @@ export const getAppreciationsByProductId = async (productId) => {
         console.error('Error fetching appreciations:', error);
         return [];
     }
-    console.log('Appreciations fetched from database:', data);
     return data;
 };
