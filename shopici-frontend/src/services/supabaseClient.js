@@ -132,8 +132,9 @@ export const addAppreciation = async (productId, userId, note, comment) => {
 export const getAppreciationsByProductId = async (productId) => {
     const { data, error } = await supabase
         .from('product_appreciation')
-        .select('*')
-        .eq('product_id', productId);
+        .select('id, product_id, user_id, note, comment, created_at')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching appreciations:', error);
