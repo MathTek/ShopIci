@@ -101,7 +101,7 @@ export const deleteFavorite = async (userId, productId) => {
 export const getFavoritesByUserId = async (userId) => {
     const { data, error } = await supabase
         .from('favorites')
-        .select('product_id')
+        .select('product_id, favorite_collection_id')
         .eq('user_id', userId);
 
     if (error) {
@@ -155,6 +155,94 @@ export const getAppreciationsByProductId = async (productId) => {
     if (error) {
         console.error('Error fetching appreciations:', error);
         return [];
+    }
+    return data;
+};
+
+export const createNewCollection = async (userId, collectionName, productId) => {
+    // Vérifier que le produit existe dans les favoris de l'utilisateur
+    const { data: favoriteData, error: favoriteError } = await supabase
+        .from('favorites')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('product_id', productId)
+        .single();
+
+    if (favoriteError || !favoriteData) {
+        console.error('Product not found in user favorites:', favoriteError);
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from('favorite_collection')
+        .insert({
+            owner_id: userId,
+            collection_name: collectionName,
+        })
+        .select();
+        
+    if (error) {
+        console.error('Error creating collection:', error);
+        return null;
+    }
+
+    const collectionId = data[0].id;
+
+    console.log('Updating favorite with collection ID:', { userId, productId, collectionId });
+
+    if (collectionId) {
+        const { error: insertError } = await supabase
+            .from('favorites')
+            .update({
+                favorite_collection_id: collectionId,
+            })
+            .eq('user_id', userId)
+            .eq('product_id', productId);
+
+        if (insertError) {
+            console.error('Error adding product to collection:', insertError);
+        }
+    }
+
+    return collectionId;
+};
+
+export const getCollectionsByUserId = async (userId) => {
+    const { data, error } = await supabase
+        .from('favorite_collection')
+        .select('*')
+        .eq('owner_id', userId);
+
+    if (error) {
+        console.error('Error fetching collections:', error);
+        return [];
+    }
+    return data;
+};
+
+export const getProductsInCollection = async (collectionId) => {
+    const { data, error } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('favorite_collection_id', collectionId);
+
+    if (error) {
+        console.error('Error fetching products in collection:', error);
+        return [];
+    }
+    return data;
+};
+
+export const getCollectionById = async (collectionId) => {
+    const { data, error } = await supabase
+        .from('favorite_collection')
+        .select('*')
+        .eq('id', collectionId)
+        .single();
+
+    if (error) {
+        console.error('Error fetching collection:', error);
+        return null;
     }
     return data;
 };
