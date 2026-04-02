@@ -435,6 +435,7 @@ const ProductDetails: React.FC = () => {
                                                 aria-label={`${star} star`}
                                                 onMouseEnter={() => setHoverRating(star)}
                                                 onMouseLeave={() => setHoverRating(0)}
+                                                checked={note === star}
                                                 onChange={(e) => setNote(parseInt(e.target.value))}
                                             />
                                         ))}
