@@ -445,6 +445,8 @@ const ProductDetails: React.FC = () => {
                                 <button
                                     className="mt-4 px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-xl w-full"
                                     onClick={() => handleAddAppreciation(note, comment)}
+                                    disabled={note < 1 || note > 5 || comment.trim() === ""}
+                                    aria-disabled={note < 1 || note > 5 || comment.trim() === ""}
                                 >
                                     Submit
                                 </button>
