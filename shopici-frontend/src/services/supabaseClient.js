@@ -112,13 +112,29 @@ export const getFavoritesByUserId = async (userId) => {
 }
 
 export const addAppreciation = async (productId, userId, note, comment) => {
+    // Normalize and validate note (rating)
+    const numericNote = Number(note);
+    if (!Number.isFinite(numericNote)) {
+        console.error('Invalid appreciation note, expected a finite number:', note);
+        return false;
+    }
+    // Clamp to allowed range 1–5 and round to nearest integer
+    const clampedNote = Math.min(5, Math.max(1, Math.round(numericNote)));
+
+    // Normalize and limit comment
+    const MAX_COMMENT_LENGTH = 500;
+    let sanitizedComment = typeof comment === 'string' ? comment.trim() : null;
+    if (sanitizedComment && sanitizedComment.length > MAX_COMMENT_LENGTH) {
+        sanitizedComment = sanitizedComment.slice(0, MAX_COMMENT_LENGTH);
+    }
+
     const { error } = await supabase
         .from('product_appreciation')
         .insert({
             product_id: productId,
             user_id: userId,
-            note,
-            comment
+            note: clampedNote,
+            comment: sanitizedComment
         });
 
     if (error) {
