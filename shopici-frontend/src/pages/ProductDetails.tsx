@@ -422,6 +422,7 @@ const ProductDetails: React.FC = () => {
                                         value={comment}
                                         onChange={(e) => setComment(e.target.value)}
                                         placeholder="Leave a comment and a rating (1-5)"
+                                        aria-label="Leave a comment and a rating (1-5)"
                                         className="w-full p-4 rounded-xl bg-slate-800/50 border border-white/20 text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                         />
                                     <div className="rating flex gap-1 justify-center">
