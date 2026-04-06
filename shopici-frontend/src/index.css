@@ -1011,3 +1011,20 @@ body {
 .animate-bounce-subtle {
   animation: bounceSubtle 2.5s ease-in-out infinite;
 }
+
+/* Force bright stars */
+.rating input[type="radio"] {
+  accent-color: #fcd34d !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.rating input[type="radio"]:checked {
+  background-color: #fcd34d !important;
+  color: #fcd34d !important;
+}
+
+.rating input[type="radio"].bg-yellow-300 {
+  background-color: #fcd34d !important;
+  filter: brightness(1.2) !important;
+}

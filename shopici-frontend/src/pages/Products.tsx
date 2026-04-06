@@ -54,7 +54,7 @@ const Products = () => {
     }, []);
 
     const filteredProducts = products.filter(product => {
-        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory || (product.promo_price !== null && product.category === selectedCategory) || (selectedCategory === 'promotion' && product.promo_price !== null);
         const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             product.description?.toLowerCase().includes(searchTerm.toLowerCase());
         
@@ -81,13 +81,14 @@ const Products = () => {
         }
     });
 
-    const categories = ['all', 'electronics', 'fashion', 'home'];
+    const categories = ['all', 'electronics', 'fashion', 'home', 'promotion'];
     const getCategoryDisplayName = (category: string) => {
         const names: { [key: string]: string } = {
             'all': 'All Categories',
             'electronics': 'Electronics',
             'fashion': 'Fashion',
-            'home': 'Home'
+            'home': 'Home',
+            'promotion': 'Promotion'
         };
         return names[category] || category;
     };
@@ -98,6 +99,13 @@ const Products = () => {
         } else {
             navigate(`/products/${product.id}`);
         }
+    };
+
+    const isNewProduct = (createdAt: string) => {
+        const createdDate = new Date(createdAt);
+        const now = new Date();
+        const diffInDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffInDays < 3;
     };
 
     return (
@@ -137,20 +145,12 @@ const Products = () => {
                             <div className="w-full lg:w-auto">
                                 <div className="relative group">
 
-                                    {/* glow background */}
                                     <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-md transition duration-300" />
 
-                                    {/* input container */}
                                     <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 transition-all duration-300 group-focus-within:border-indigo-400 group-focus-within:bg-white/10">
 
-                                    {/* icon */}
-                                    <div className="pl-2 text-white/40 group-focus-within:text-indigo-400 transition">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z" />
-                                        </svg>
-                                    </div>
+                                   
 
-                                    {/* input */}
                                     <input
                                         type="text"
                                         placeholder="Search products..."
@@ -162,7 +162,6 @@ const Products = () => {
                                                 text-sm text-white placeholder-white/40"
                                     />
 
-                                    {/* keyboard shortcut */}
                                     <div className="hidden sm:flex items-center gap-1 mr-3 px-2 py-1 rounded-md border border-white/10 text-[11px] text-white/30">
                                         ⌘K
                                     </div>
@@ -266,7 +265,6 @@ const Products = () => {
                                 <option value="price-high" className="bg-gray-900">Price ↓</option>
                                 </select>
 
-                                {/* custom arrow */}
                                 <div className="pointer-events-none absolute inset-y-0 flex left-16 items-center text-white/40">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M6 9l6 6 6-6" />
@@ -361,6 +359,17 @@ const Products = () => {
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                             
                         
+                                            {isNewProduct(product.created_at) && (
+                                                <div className="absolute top-3 left-3 group/badge">
+                                                    <div className="relative">
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-xl blur-lg opacity-75 group-hover/badge:opacity-100 transition-opacity duration-300 scale-110"></div>
+                                                        <div className="relative bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-black shadow-2xl backdrop-blur-sm border border-cyan-300/50 flex items-center gap-2 group-hover/badge:scale-110 transition-transform duration-300 whitespace-nowrap">
+                                                            <span className="text-base">NEW</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="absolute top-2 right-2">
                                                 <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
                                             </div>
@@ -414,11 +423,23 @@ const Products = () => {
                                                 )}
                                             </div>
                                             
-                                            <div className="flex items-center justify-center">
+                                            {product.promo_price ? (
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className="text-sm text-red-400 line-through">
+                                                        ${product.price?.toFixed(2) || '0.00'}
+                                                    </span>
+                                                    <span className="text-base font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+                                                        ${product.promo_price.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+
+                                                <div className="flex items-center justify-center">
                                                 <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                                                     ${product.price?.toFixed(2) || '0.00'}
                                                 </span>
                                             </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

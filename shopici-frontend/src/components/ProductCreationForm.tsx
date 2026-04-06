@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from "../services/supabaseClient";
+import { supabase, createPromotion } from "../services/supabaseClient";
 
 interface ProductCreationFormProps {
     onProductCreated: (product: any) => void;
@@ -148,7 +148,39 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
             }
         }
 
-        
+        if (isForUpdate && (formData.price < initialData.price)) {
+            const newProduct = {
+                title: formData.title,
+                description: formData.description,
+                price: parseFloat(initialData.price),
+                category: formData.category,
+                image_urls: imageUrl,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                user_id: userId,
+                promo_price: parseFloat(formData.price)
+            };
+
+            onProductCreated(newProduct);
+            return;
+        }
+
+        if (isForUpdate) {
+            const updatedProduct = {
+                id: initialData.id,
+                title: formData.title,
+                description: formData.description,
+                price: parseFloat(formData.price),
+                category: formData.category,
+                image_urls: imageUrl,
+                status: 'active',
+                user_id: userId,
+                promo_price: null
+            };
+            onProductCreated(updatedProduct);
+            return;
+        }
+
         const newProduct = {
             title: formData.title,
             description: formData.description,
@@ -157,7 +189,8 @@ const ProductCreationForm: React.FC<ProductCreationFormProps> = ({ onProductCrea
             image_urls: imageUrl,
             status: 'active',
             created_at: new Date().toISOString(),
-            user_id: userId
+            user_id: userId,
+            promo_price: null
         };
 
         onProductCreated(newProduct);

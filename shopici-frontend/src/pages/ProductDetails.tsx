@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, insertNewFavorite, deleteFavorite, 
     getFavoritesByUserId, getUserId, addAppreciation,
-     getAppreciationsByProductId, getUserNameById, deleteAppreciation } from "../services/supabaseClient";
+     getAppreciationsByProductId, getUserNameById, deleteAppreciation
+    , calculateAverageRating } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
 
 
@@ -15,6 +16,7 @@ interface Product {
     image_urls?: string;
     created_at: string;
     user_id: string;
+    promo_price?: number | null;
 }
 
 interface Appreciation {
@@ -40,6 +42,8 @@ const ProductDetails: React.FC = () => {
     const [sellerName, setSellerName] = useState<any>("");
     const [alreadyAppreciated, setAlreadyAppreciated] = useState(false);
     const [isMyComment, setIsMyComment] = useState(false);
+    const [averageRating, setAverageRating] = useState<number | null>(null);
+    const [openShareModal, setOpenShareModal] = useState(false);
 
     const predefinedMessages = [
         "Bonjour, ce produit est-il toujours disponible ?",
@@ -57,6 +61,7 @@ const ProductDetails: React.FC = () => {
     const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
     const [usernames, setUsernames] = useState<{ [key: string]: string }>({});
     const [isMyProduct, setIsMyProduct] = useState(false);
+
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -89,6 +94,10 @@ const ProductDetails: React.FC = () => {
                 
                 const sellerName = await getUserNameById(data.user_id);
                 setSellerName(sellerName);
+
+                const avgRating = await calculateAverageRating(productId);
+                setAverageRating(avgRating);
+
             } catch (error) {
                 console.error("Error:", error);
             } finally {
@@ -120,7 +129,7 @@ const ProductDetails: React.FC = () => {
                 }
             )
             .subscribe(() => {
-                // Intentionally left blank: subscription status is not logged to avoid noisy or sensitive logs.
+          
             });
 
         return () => {
@@ -132,7 +141,6 @@ const ProductDetails: React.FC = () => {
         const loadUsernames = async () => {
             if (appreciations.length === 0) return;
 
-            // Collect and deduplicate user IDs that are missing from the usernames state
             const missingUserIds = Array.from(
                 new Set(
                     appreciations
@@ -157,9 +165,6 @@ const ProductDetails: React.FC = () => {
             if (usernamesMap[me]) {
                 setAlreadyAppreciated(true);
             }
-
-            console.log(alreadyAppreciated, "Already appreciated state");
-
             setUsernames(prev => ({ ...prev, ...usernamesMap }));
         };
 
@@ -358,6 +363,134 @@ const ProductDetails: React.FC = () => {
         );
     }
 
+    if (openShareModal) {
+        const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+        const shareText = `Check out this amazing product: ${product?.title}`;
+        
+        const shareLinks = {
+            facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+            twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+            whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`,
+            linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`,
+            pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(shareText)}&media=${encodeURIComponent(product?.image_urls || '')}`,
+            telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`
+        };
+
+        const handleCopyLink = () => {
+            navigator.clipboard.writeText(shareUrl);
+            alert('Link copied to clipboard!');
+        };
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-gradient-to-br from-[#0f172a] to-slate-900 rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl -z-10"></div>
+                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl -z-10"></div>
+
+                    <button
+                        onClick={() => setOpenShareModal(false)}
+                        className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-bold text-white mb-2">Share This Product</h2>
+                        <p className="text-white/60 text-sm">Share on your favorite platform</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                        <a
+                            href={shareLinks.facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#1877F2]/20 hover:border-[#1877F2]/50 transition-all group"
+                            title="Share on Facebook"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#1877F2] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        <a
+                            href={shareLinks.twitter}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#1DA1F2]/20 hover:border-[#1DA1F2]/50 transition-all group"
+                            title="Share on Twitter"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#1DA1F2] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M23.953 4.57a10 10 0 002.856-3.45 10.009 10.009 0 01-2.8.856 4.994 4.994 0 002.165-2.723c-.95.563-2.005.974-3.127 1.195a4.992 4.992 0 00-8.506 4.547A14.148 14.148 0 011.671 3.149a4.993 4.993 0 001.546 6.657 4.973 4.973 0 01-2.26-.556v.06a4.993 4.993 0 003.997 4.888 4.996 4.996 0 01-2.252.085 4.994 4.994 0 004.644 3.461 10.01 10.01 0 01-6.177 2.129c-.399 0-.779-.023-1.17-.067a14.047 14.047 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                            </svg>
+                        </a>
+
+                        <a
+                            href={shareLinks.whatsapp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#25D366]/20 hover:border-[#25D366]/50 transition-all group"
+                            title="Share on WhatsApp"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#25D366] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371 0-.57 0-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-4.967 1.523 9.9 9.9 0 00-3.428 4.05 9.869 9.869 0 00.88 12.385 9.887 9.887 0 007.156 3.045h.005c2.407 0 4.663-.7 6.626-2.035 1.827-1.191 3.348-2.858 4.403-4.764a9.88 9.88 0 00.857-4.55 9.87 9.87 0 00-2.932-7.045A9.865 9.865 0 0011.052 6.98zM19.073 3.617c2.905 0 5.637 1.134 7.697 3.2A10.86 10.86 0 0130 15.073c0 3.013-.786 5.982-2.27 8.56a10.845 10.845 0 01-6.206 4.407 10.874 10.874 0 01-8.52-1.89 10.847 10.847 0 01-3.157-7.523 10.85 10.85 0 012.77-7.697A10.854 10.854 0 0119.073 3.617m0-2c-6.638 0-12 5.373-12 12 0 2.36.689 4.576 1.876 6.438A11.996 11.996 0 0019.073 32c6.627 0 12-5.373 12-12 0-2.36-.689-4.574-1.876-6.437A11.996 11.996 0 0019.073 1.617z"/>
+                            </svg>
+                        </a>
+
+                        <a
+                            href={shareLinks.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#0A66C2]/20 hover:border-[#0A66C2]/50 transition-all group"
+                            title="Share on LinkedIn"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#0A66C2] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.475-2.236-1.986-2.236-1.081 0-1.722.722-2.004 1.418-.103.249-.129.597-.129.946v5.441h-3.554s.05-8.81 0-9.728h3.554v1.375c.429-.66 1.191-1.599 2.898-1.599 2.117 0 3.704 1.385 3.704 4.363v5.589zM5.337 8.855c-1.144 0-1.915-.761-1.915-1.712 0-.951.77-1.71 1.957-1.71 1.187 0 1.914.759 1.938 1.71 0 .951-.751 1.712-1.98 1.712zm1.946 11.597H3.392V9.142h3.891v11.31zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/>
+                            </svg>
+                        </a>
+
+                        <a
+                            href={shareLinks.pinterest}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#E60023]/20 hover:border-[#E60023]/50 transition-all group"
+                            title="Share on Pinterest"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#E60023] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.937-.2-2.378.042-3.41.22-.937 1.409-5.98 1.409-5.98s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.767 1.518 1.686 0 1.026-.653 2.56-.99 3.984-.281 1.19.597 2.163 1.771 2.163 2.135 0 3.775-2.253 3.775-5.503 0-2.879-2.068-4.882-5.029-4.882-3.42 0-5.412 2.562-5.412 5.211 0 1.032.39 2.138.878 2.738.096.129.11.243.083.371l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146 1.124.347 2.317.535 3.554.535 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                        </a>
+
+                        <a
+                            href={shareLinks.telegram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center p-4 rounded-xl bg-white/10 border border-white/10 hover:bg-[#0088cc]/20 hover:border-[#0088cc]/50 transition-all group"
+                            title="Share on Telegram"
+                        >
+                            <svg className="w-6 h-6 text-white/70 group-hover:text-[#0088cc] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.328-.373-.115l-6.869 4.332-2.96-.924c-.643-.204-.657-.643.136-.953l11.566-4.458c.538-.197 1.006.128.832 1.126z"/>
+                            </svg>
+                        </a>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <p className="text-xs text-white/50 mb-3 text-center">Or copy the link</p>
+                        <button
+                            onClick={handleCopyLink}
+                            className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 group"
+                        >
+                            <svg className="w-4 h-4 text-white/70 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copy Link
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200">
             <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 lg:py-12">
@@ -401,8 +534,8 @@ const ProductDetails: React.FC = () => {
 
                       
                         <div className="flex gap-4 mt-6 justify-center lg:justify-start">
-                           
-                            <button onClick={handleShare} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+
+                            <button onClick={() => setOpenShareModal(true)} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                                 </svg>
@@ -447,15 +580,49 @@ const ProductDetails: React.FC = () => {
                             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
                                 {product.title}
                             </h1>
-                            <div className="flex items-baseline gap-4">
-                                <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                    {product.price?.toLocaleString()} €
-                                </span>
-                               
-                            </div>
+                            {product.promo_price ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-4xl text-red-400 line-through">
+                                        ${product.price?.toFixed(2) || '0.00'}
+                                    </span>
+                                    <span className="text-4xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+                                        ${product.promo_price.toFixed(2)}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center">
+                                    <div className="flex items-baseline gap-4">
+                                        <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                            {product.price?.toLocaleString()} $
+                                        </span>
+
+                                    </div>
+
+                                </div>
+                            )}
                         </div>
 
-                 
+
+                        <div className="flex mt-2 gap-4 items-center">
+                            <div className="rating flex gap-1 !brightness-100 !contrast-100">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <input
+                                        key={star}
+                                        type="radio"
+                                        name="rating"
+                                        value={star}
+                                        className={`mask mask-star-2 cursor-pointer transition-all w-7 h-7 !brightness-100 !contrast-100 ${(averageRating || 0) >= star ? '!bg-yellow-300' : 'bg-slate-600'}`}
+                                        aria-label={`${star} star`}
+                                        readOnly
+                                        checked={averageRating === star}
+                                    />
+                                ))}
+                            </div>
+                            <span className="text-white font-medium">
+                                {averageRating ? averageRating.toFixed(1) : 'No ratings yet'}
+                            </span>
+                        </div>
+
                         <div className="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur-md mt-8">
                             <h3 className="text-white font-semibold mb-4 text-lg">Product description</h3>
                             <div className="max-h-40 overflow-y-auto pr-2">
