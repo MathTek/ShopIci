@@ -325,3 +325,24 @@ export const deleteAppreciation = async (appreciationId) => {
 
     return true;
 };
+
+export const calculateAverageRating = async (productId) => {
+    const { data, error } = await supabase
+        .from('product_appreciation')
+        .select('note')
+        .eq('product_id', productId);
+
+    if (error) {
+        console.error('Error fetching appreciations for average rating:', error);
+        return null;
+    }
+
+    if (data.length === 0) {
+        return null;
+    }
+
+    const totalRating = data.reduce((sum, appreciation) => sum + appreciation.note, 0);
+    const averageRating = totalRating / data.length;
+
+    return averageRating;
+}

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, insertNewFavorite, deleteFavorite, 
     getFavoritesByUserId, getUserId, addAppreciation,
-     getAppreciationsByProductId, getUserNameById, deleteAppreciation } from "../services/supabaseClient";
+     getAppreciationsByProductId, getUserNameById, deleteAppreciation
+    , calculateAverageRating } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
 
 
@@ -40,6 +41,7 @@ const ProductDetails: React.FC = () => {
     const [sellerName, setSellerName] = useState<any>("");
     const [alreadyAppreciated, setAlreadyAppreciated] = useState(false);
     const [isMyComment, setIsMyComment] = useState(false);
+    const [averageRating, setAverageRating] = useState<number | null>(null);
 
     const predefinedMessages = [
         "Bonjour, ce produit est-il toujours disponible ?",
@@ -57,6 +59,7 @@ const ProductDetails: React.FC = () => {
     const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
     const [usernames, setUsernames] = useState<{ [key: string]: string }>({});
     const [isMyProduct, setIsMyProduct] = useState(false);
+
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -89,6 +92,10 @@ const ProductDetails: React.FC = () => {
                 
                 const sellerName = await getUserNameById(data.user_id);
                 setSellerName(sellerName);
+
+                const avgRating = await calculateAverageRating(productId);
+                setAverageRating(avgRating);
+
             } catch (error) {
                 console.error("Error:", error);
             } finally {
@@ -120,7 +127,7 @@ const ProductDetails: React.FC = () => {
                 }
             )
             .subscribe(() => {
-                // Intentionally left blank: subscription status is not logged to avoid noisy or sensitive logs.
+          
             });
 
         return () => {
@@ -132,7 +139,6 @@ const ProductDetails: React.FC = () => {
         const loadUsernames = async () => {
             if (appreciations.length === 0) return;
 
-            // Collect and deduplicate user IDs that are missing from the usernames state
             const missingUserIds = Array.from(
                 new Set(
                     appreciations
@@ -157,9 +163,6 @@ const ProductDetails: React.FC = () => {
             if (usernamesMap[me]) {
                 setAlreadyAppreciated(true);
             }
-
-            console.log(alreadyAppreciated, "Already appreciated state");
-
             setUsernames(prev => ({ ...prev, ...usernamesMap }));
         };
 
@@ -455,7 +458,27 @@ const ProductDetails: React.FC = () => {
                             </div>
                         </div>
 
-                 
+
+                        <div className="flex mt-2 gap-4 items-center">
+                            <div className="rating flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <input
+                                        key={star}
+                                        type="radio"
+                                        name="rating"
+                                        value={star}
+                                        className={`mask mask-star-2 cursor-pointer transition-all ${averageRating >= star ? 'bg-orange-400' : 'bg-gray-400'}`}
+                                        aria-label={`${star} star`}
+                                        readOnly
+                                        checked={averageRating === star}
+                                    />
+                                ))}
+                            </div>
+                            <span className="text-slate-400 text-sm">
+                                {averageRating ? averageRating.toFixed(1) : 'No ratings yet'}
+                            </span>
+                        </div>
+
                         <div className="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur-md mt-8">
                             <h3 className="text-white font-semibold mb-4 text-lg">Product description</h3>
                             <div className="max-h-40 overflow-y-auto pr-2">

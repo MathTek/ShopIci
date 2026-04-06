@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 
 interface Collection {
     id: number;
@@ -27,6 +28,7 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
     onClick,
     onDelete
 }) => {
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     return (
         <div
             onDragOver={onDragOver}
@@ -40,20 +42,17 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                 }
             `}
         >
-            {/* Animated background gradient */}
             <div className={`absolute inset-0 transition-all duration-500 ${
                 isDropTarget
                     ? 'bg-gradient-to-br from-cyan-500/60 via-blue-500/40 to-purple-500/30'
                     : 'bg-gradient-to-br from-slate-700/50 via-slate-800/40 to-slate-900/30 group-hover:from-cyan-600/40 group-hover:via-blue-600/30 group-hover:to-purple-600/20'
             }`}></div>
 
-            {/* Animated glowing particles background */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                 <div className="absolute top-0 left-0 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 group-hover:animate-pulse"></div>
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 group-hover:animate-pulse" style={{animationDelay: '0.5s'}}></div>
             </div>
 
-            {/* Neon border effect */}
             <div className="absolute inset-0 rounded-3xl pointer-events-none">
                 <div className={`absolute inset-0 rounded-3xl transition-all duration-500 ${
                     isDropTarget
@@ -62,12 +61,10 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                 }`}></div>
             </div>
 
-            {/* Overlay gradient for depth */}
+           
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
 
-            {/* Content */}
             <div className="relative z-10 h-full w-full flex flex-col items-center justify-center px-6 py-8 gap-4">
-                {/* Icon with animation */}
                 <div className={`p-4 rounded-2xl transition-all duration-500 transform ${
                     isDropTarget 
                         ? 'bg-cyan-500/50 scale-110 animate-bounce text-cyan-100' 
@@ -78,19 +75,16 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                     </svg>
                 </div>
 
-                {/* Collection name with gradient text */}
                 <h2 className="text-center text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 line-clamp-2 leading-tight drop-shadow-lg group-hover:from-cyan-200 group-hover:to-purple-200 transition-all duration-300">
                     {collection.collection_name || 'Unnamed Collection'}
                 </h2>
 
-                {/* Divider line */}
                 <div className={`h-0.5 w-12 transition-all duration-500 ${
                     isDropTarget
                         ? 'bg-gradient-to-r from-cyan-400 to-blue-400 w-16'
                         : 'bg-gradient-to-r from-cyan-500/40 to-purple-500/40 group-hover:from-cyan-400 group-hover:to-blue-400 group-hover:w-16'
                 }`}></div>
 
-                {/* Product count with enhanced styling */}
                 <div className={`flex flex-col items-center gap-2 transition-all duration-500 ${
                     isDropTarget ? 'scale-110' : ''
                 }`}>
@@ -106,7 +100,6 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                     </div>
                 </div>
 
-                {/* Drop indicator with animation */}
                 {isDropTarget && (
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center animate-pulse">
                         <div className="flex flex-col items-center gap-2">
@@ -119,17 +112,15 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                 )}
             </div>
 
-            {/* Corner accent lights */}
             <div className="absolute top-0 left-0 w-1 h-1 bg-cyan-400 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="absolute top-0 right-0 w-1 h-1 bg-blue-400 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="absolute bottom-0 left-0 w-1 h-1 bg-purple-400 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="absolute bottom-0 right-0 w-1 h-1 bg-cyan-400 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-            {/* Delete button */}
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    onDelete?.(collection.id);
+                    setShowDeleteModal(true);
                 }}
                 className="absolute top-3 right-3 z-20 p-2 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 hover:text-red-300 transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95"
                 title="Delete collection"
@@ -138,6 +129,40 @@ const DroppableCollection: React.FC<DroppableCollectionProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
+
+            {showDeleteModal && ReactDOM.createPortal(
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" onClick={() => setShowDeleteModal(false)}>
+                    <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md border border-red-500/30 rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-4 mb-4">
+                           
+                            <h3 className="text-xl font-bold text-white">Delete Collection?</h3>
+                        </div>
+
+                        <p className="text-white/70 mb-6">
+                            Are you sure you want to delete <span className="font-semibold text-cyan-300">"{collection.collection_name}"</span>? This action cannot be undone.
+                        </p>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setShowDeleteModal(false)}
+                                className="flex-1 px-4 py-3 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-white font-semibold transition-all duration-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onDelete?.(collection.id);
+                                    setShowDeleteModal(false);
+                                }}
+                                className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-red-500/50"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

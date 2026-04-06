@@ -137,20 +137,16 @@ const Products = () => {
                             <div className="w-full lg:w-auto">
                                 <div className="relative group">
 
-                                    {/* glow background */}
                                     <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 opacity-0 group-focus-within:opacity-100 blur-md transition duration-300" />
 
-                                    {/* input container */}
                                     <div className="relative flex items-center rounded-xl border border-white/10 bg-white/5 transition-all duration-300 group-focus-within:border-indigo-400 group-focus-within:bg-white/10">
 
-                                    {/* icon */}
                                     <div className="pl-2 text-white/40 group-focus-within:text-indigo-400 transition">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z" />
                                         </svg>
                                     </div>
 
-                                    {/* input */}
                                     <input
                                         type="text"
                                         placeholder="Search products..."
@@ -162,7 +158,6 @@ const Products = () => {
                                                 text-sm text-white placeholder-white/40"
                                     />
 
-                                    {/* keyboard shortcut */}
                                     <div className="hidden sm:flex items-center gap-1 mr-3 px-2 py-1 rounded-md border border-white/10 text-[11px] text-white/30">
                                         ⌘K
                                     </div>

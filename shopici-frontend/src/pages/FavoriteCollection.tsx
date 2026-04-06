@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useState } from "react";
-import { useParams } from 'react-router-dom';
-import { getProductsInCollection, getProductById, getCollectionById } from "../services/supabaseClient";
+import { useParams, useNavigate } from 'react-router-dom';
+import { getProductsInCollection, getProductById, getCollectionById, removeProductFromCollection, getUserId } from "../services/supabaseClient";
 
 interface Product {
     id: number;
@@ -22,6 +22,8 @@ export default function Collection() {
     const { id } = useParams();
     const [products, setProducts] = useState<Product[]>([]);
     const [collection, setCollection] = useState<Collection | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState<{isOpen: boolean; productId: number | null}>({isOpen: false, productId: null});
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchCollection = async () => {
@@ -42,6 +44,15 @@ export default function Collection() {
 
         fetchCollection();
     }, [id]);
+
+    const handleRemoveFromCollection = async (productId: number) => {
+        const userId = await getUserId();
+        if (userId && productId) {
+            console.log(`Removing product ${productId}`);
+            await removeProductFromCollection(userId, productId);
+            setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
+        }
+    }
 
 
     return (
@@ -68,8 +79,18 @@ export default function Collection() {
                             </div>
                         </div>
                     </div>
+                <button 
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 mb-8 text-slate-400 hover:text-white transition-colors group"
+                >
+                    <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to favorite
+                </button>
                 </div>
             </div>
+            
             <div className="relative z-10 px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {products.map((fav, index) => (
@@ -79,6 +100,20 @@ export default function Collection() {
                                 className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
+                                <div className='absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2'>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowDeleteModal({isOpen: true, productId: fav.id});
+                                        }}
+                                        className="p-2 rounded-full bg-red-500/20 text-red-400  hover:text-red-300 transition-all duration-300"
+                                        title="Remove from favorites"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
                                 <div className="relative overflow-hidden h-2/3">
                                     <img
                                         src={fav.image_urls || '/placeholder-image.jpg'}
@@ -113,6 +148,31 @@ export default function Collection() {
                                 </div>
                             </div>
                         ))}
+                        {showDeleteModal.isOpen && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" onClick={() => setShowDeleteModal({isOpen: false, productId: null})}>
+                                <div className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 backdrop-blur-md border border-red-500/30 rounded-2xl p-8 shadow-2xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex justify-center gap-4 mb-4">
+                                        <h3 className="text-xl font-bold text-white">Remove from collection?</h3>
+                                    </div>
+                                    <div className="flex justify-center gap-4">
+                                        <button
+                                            onClick={() => setShowDeleteModal({isOpen: false, productId: null})}
+                                            className="px-4 py-2 rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors duration-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleRemoveFromCollection(showDeleteModal.productId!);
+                                                setShowDeleteModal({isOpen: false, productId: null});
+                                            }}
+                                            className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors duration-300"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>)}
                 </div>
             </div>
             </div>
