@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase, insertNewFavorite, deleteFavorite, getFavoritesByUserId, getUserId, addAppreciation, getAppreciationsByProductId, getUserNameById } from "../services/supabaseClient";
+import { supabase, insertNewFavorite, deleteFavorite, 
+    getFavoritesByUserId, getUserId, addAppreciation,
+     getAppreciationsByProductId, getUserNameById, deleteAppreciation } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
 
 
@@ -35,6 +37,9 @@ const ProductDetails: React.FC = () => {
     const [isSend, setIsSend] = useState(false);
     const [userId, setUserId] = useState<string>("");
     const [sellerId, setSellerId] = useState<string>("");
+    const [sellerName, setSellerName] = useState<any>("");
+    const [alreadyAppreciated, setAlreadyAppreciated] = useState(false);
+    const [isMyComment, setIsMyComment] = useState(false);
 
     const predefinedMessages = [
         "Bonjour, ce produit est-il toujours disponible ?",
@@ -51,6 +56,7 @@ const ProductDetails: React.FC = () => {
     const [comment, setComment] = useState<string>("");
     const [appreciations, setAppreciations] = useState<Appreciation[]>([]);
     const [usernames, setUsernames] = useState<{ [key: string]: string }>({});
+    const [isMyProduct, setIsMyProduct] = useState(false);
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -68,10 +74,21 @@ const ProductDetails: React.FC = () => {
 
                 const favorites = await getFavoritesByUserId(await getUserId());
 
+                const userId = await getUserId();
+
+                setUserId(userId);
+
 
                 if (favorites.some(fav => fav.product_id === productId)) {
                     setIsFavorite(true);
-            }
+
+                }
+                if (data.user_id === await getUserId()) {
+                    setIsMyProduct(true);           
+                } 
+                
+                const sellerName = await getUserNameById(data.user_id);
+                setSellerName(sellerName);
             } catch (error) {
                 console.error("Error:", error);
             } finally {
@@ -126,7 +143,6 @@ const ProductDetails: React.FC = () => {
 
             if (missingUserIds.length === 0) return;
 
-            // Fetch all missing usernames concurrently
             const usersData = await Promise.all(
                 missingUserIds.map(userId => getUserNameById(userId))
             );
@@ -136,6 +152,13 @@ const ProductDetails: React.FC = () => {
                 const userData = usersData[index];
                 usernamesMap[userId] = userData?.username || 'Anonymous';
             });
+
+            const me = await getUserId();
+            if (usernamesMap[me]) {
+                setAlreadyAppreciated(true);
+            }
+
+            console.log(alreadyAppreciated, "Already appreciated state");
 
             setUsernames(prev => ({ ...prev, ...usernamesMap }));
         };
@@ -271,6 +294,13 @@ const ProductDetails: React.FC = () => {
             setHoverRating(0);
         } catch (error) {
             console.error("Error adding appreciation:", error);
+        }
+    };
+
+    const handleDeleteAppreciation = async (appreciationId: string) => {
+        const success = await deleteAppreciation(appreciationId);
+        if (success) {
+            setAppreciations((prev) => prev.filter((app) => app.id !== appreciationId));
         }
     };
 
@@ -411,7 +441,7 @@ const ProductDetails: React.FC = () => {
                                 </span>
                                 <span className="w-1 h-1 bg-slate-600 rounded-full" />
                                 <span className="text-slate-500 text-sm">
-                                    Published on {new Date(product.created_at).toLocaleDateString()}
+                                    Published on {new Date(product.created_at).toLocaleDateString()} by {isMyProduct ? "You" : sellerName.username || "Unknown Seller"}
                                 </span>
                             </div>
                             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
@@ -435,7 +465,7 @@ const ProductDetails: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex justify-center mt-8">
+                        {!isMyProduct && !alreadyAppreciated && (<div className="flex justify-center mt-8">
                             <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/10 backdrop-blur-sm w-full max-w-2xl">
                                 <div className='flex flex-col gap-4'>
                                     <input
@@ -473,7 +503,7 @@ const ProductDetails: React.FC = () => {
                                     Submit
                                 </button>
                             </div>
-                        </div>
+                        </div>)}
 
                         <div className="flex justify-center mt-8">
                             <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/10 backdrop-blur-sm w-full max-w-2xl">
@@ -496,6 +526,7 @@ const ProductDetails: React.FC = () => {
                                         const username = usernames[appreciation.user_id] || 'Anonymous';
                                         const userInitial = username?.charAt(0).toUpperCase() || 'U';
                                         const date = new Date(appreciation.created_at).toDateString();
+
 
                                         return (
                                         <div
@@ -521,6 +552,13 @@ const ProductDetails: React.FC = () => {
                                                     </svg>
                                                     ))}
                                                 </div>
+                                                {appreciation.user_id === userId && (
+                                                    <div className="flex justify-end">
+                                                        <button className="text-sm text-red-500 hover:underline" onClick={() => handleDeleteAppreciation(appreciation.id)}>
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-center">
                                                     <p className="text-slate-300 text-sm leading-relaxed text-center">
                                                         {date}
@@ -541,7 +579,7 @@ const ProductDetails: React.FC = () => {
                         </div>
 
                   
-                        <div className="space-y-6 mt-8">
+                        {!isMyProduct && (<div className="space-y-6 mt-8">
                             <div className="flex justify-center">
                                 <button className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold rounded-2xl shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all transform hover:-translate-y-1 active:scale-[0.98]"
                                     onClick={() => {checkconversation(product)}}
@@ -550,7 +588,7 @@ const ProductDetails: React.FC = () => {
                                 </button>
                             </div>
                             
-                        </div>
+                        </div>)}
 
   
                         <div className="grid grid-cols-2 gap-6 mt-8">
