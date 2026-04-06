@@ -16,6 +16,7 @@ interface Product {
     image_urls?: string;
     created_at: string;
     user_id: string;
+    promo_price?: number | null;
 }
 
 interface Appreciation {
@@ -450,12 +451,26 @@ const ProductDetails: React.FC = () => {
                             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
                                 {product.title}
                             </h1>
-                            <div className="flex items-baseline gap-4">
-                                <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                    {product.price?.toLocaleString()} €
-                                </span>
-                               
-                            </div>
+                            {product.promo_price ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-4xl text-red-400 line-through">
+                                        ${product.price?.toFixed(2) || '0.00'}
+                                    </span>
+                                    <span className="text-4xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+                                        ${product.promo_price.toFixed(2)}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center">
+                                    <div className="flex items-baseline gap-4">
+                                        <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                                            {product.price?.toLocaleString()} $
+                                        </span>
+
+                                    </div>
+
+                                </div>
+                            )}
                         </div>
 
 

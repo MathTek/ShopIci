@@ -291,11 +291,23 @@ const MyProducts = () => {
                                             )}
                                         </div>
                                         
-                                        <div className="flex items-center justify-center">
-                                            <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                                ${product.price?.toFixed(2) || '0.00'}
-                                            </span>
-                                        </div>
+                                        {product.promo_price ? (
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className="text-sm text-red-400 line-through">
+                                                        ${product.price?.toFixed(2) || '0.00'}
+                                                    </span>
+                                                    <span className="text-base font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+                                                        ${product.promo_price.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+
+                                                <div className="flex items-center justify-center">
+                                                <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                                                    ${product.price?.toFixed(2) || '0.00'}
+                                                </span>
+                                            </div>
+                                            )}
                                     </div>
                                 </div>
                             ))}
