@@ -1,6 +1,10 @@
 import React from 'react';
 import { useEffect, useState } from "react";
-import { getFavoritesByUserId, getUserId, getProductById, createNewCollection, getCollectionsByUserId, getProductsInCollection } from "../services/supabaseClient";
+import { getFavoritesByUserId, getUserId, getProductById, createNewCollection, 
+    getCollectionsByUserId, getProductsInCollection, addProductToCollection, 
+    removeProductFromCollection, deleteCollection } from "../services/supabaseClient";
+import DraggableProduct from '../components/DraggableProduct';
+import DroppableCollection from '../components/DroppableCollection';
 
  interface Product {
     id: number;
@@ -26,6 +30,9 @@ const MyFavorites: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [userId, setUserId] = useState<string| null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [draggedProductId, setDraggedProductId] = useState<number | null>(null);
+  const [dropTargetCollectionId, setDropTargetCollectionId] = useState<number | null>(null);
+  const [collectionProductCounts, setCollectionProductCounts] = useState<{ [key: number]: number }>({});
 
 
 useEffect(() => {
@@ -45,20 +52,101 @@ useEffect(() => {
             );
             
             setProducts(productsData);
-            setCollections(await getCollectionsByUserId(userId));
+            const fetchedCollections = await getCollectionsByUserId(userId);
+            setCollections(fetchedCollections);
+            
+            const counts: { [key: number]: number } = {};
+            for (const collection of fetchedCollections) {
+                const productsInColl = await getProductsInCollection(collection.id);
+                counts[collection.id] = productsInColl.length;
+            }
+            setCollectionProductCounts(counts);
         }
     };
 
     fetchFavorites();
 }, []);
 
-    const handleProductAddToCollection = (productIds: number[]) => {
+    const handleProductAddToCollection = async (productIds: number[]) => {
         console.log("Adding products to collection:", productIds);
-        productIds.forEach(async (productId) => {
-            await createNewCollection(userId, collectionName, productId);
-        });
+        for (const productId of productIds) {
+            const collectionId = await createNewCollection(userId, collectionName, productId);
+            if (collectionId) {
+                setCollections(prev => [...prev, {
+                    id: collectionId,
+                    owner_id: userId || '',
+                    collection_name: collectionName
+                }]);
+                
+                setCollectionProductCounts(prev => ({
+                    ...prev,
+                    [collectionId]: 1
+                }));
+                
+                setProducts(prev => prev.filter(p => p.id !== productId));
+            }
+        }
         setSelectedProducts([]);
+        setCollectionName("");
+        setIsNameSet(false);
+        setCollectionModalOpen(false);
     }
+
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, productId: number) => {
+        setDraggedProductId(productId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+        setDraggedProductId(null);
+        setDropTargetCollectionId(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        setDropTargetCollectionId(null);
+    };
+
+    const handleDragOverCollection = (e: React.DragEvent<HTMLDivElement>, collectionId: number) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDropTargetCollectionId(collectionId);
+    };
+
+    const handleDropOnCollection = async (e: React.DragEvent<HTMLDivElement>, collectionId: number) => {
+        e.preventDefault();
+        setDropTargetCollectionId(null);
+
+        if (draggedProductId && userId) {
+            try {
+                const success = await addProductToCollection(userId, draggedProductId, collectionId);
+                if (success) {
+                    setProducts(prev => prev.filter(p => p.id !== draggedProductId));
+                    
+                    setCollectionProductCounts(prev => ({
+                        ...prev,
+                        [collectionId]: (prev[collectionId] || 0) + 1
+                    }));
+
+                    console.log(`Product ${draggedProductId} added to collection ${collectionId}`);
+                }
+            } catch (error) {
+                console.error('Error adding product to collection:', error);
+            }
+        }
+        setDraggedProductId(null);
+    };
+
+    const handleDeleteCollection = async (collectionId: number) => {
+        const success = await deleteCollection(collectionId);
+        if (success) {
+            setCollections(prev => prev.filter(c => c.id !== collectionId));
+        }
+    };
 
     if (isNameSet) {
         const toggleProduct = (productId: number) => {
@@ -245,58 +333,28 @@ useEffect(() => {
                         {collections.map((collection) => (
                             <div
                                 key={collection.id}
-                                onClick={() => window.location.href = `/collections/${collection.id}`}
-                                className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
+                                onDragOver={(e) => handleDragOverCollection(e, collection.id)}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => handleDropOnCollection(e, collection.id)}
                             >
-                                <div className="relative overflow-hidden h-full">
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
-                                        <h2 className="text-lg font-bold text-white text-center px-2">
-                                            {collection.collection_name || 'Unnamed Collection'}
-                                        </h2>
-                                    </div>
-                                </div>
+                                <DroppableCollection
+                                    collection={collection}
+                                    isDropTarget={dropTargetCollectionId === collection.id}
+                                    productCount={collectionProductCounts[collection.id] || 0}
+                                    onClick={() => window.location.href = `/collections/${collection.id}`}
+                                    onDelete={handleDeleteCollection}
+                                />
                             </div>
                         ))}
                         {products.map((fav, index) => (
-                            <div
+                            <DraggableProduct
                                 key={fav.id}
+                                product={fav}
+                                isDragging={draggedProductId === fav.id}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
                                 onClick={() => window.location.href = `/products/${fav.id}`}
-                                className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
-                                style={{ animationDelay: `${index * 50}ms` }}
-                            >
-                                <div className="relative overflow-hidden h-2/3">
-                                    <img
-                                        src={fav.image_urls || '/placeholder-image.jpg'}
-                                        alt={fav.title}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.jpg'; }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                    <div className="absolute top-2 right-2">
-                                        <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
-                                    </div>
-                                </div>
-                                <div className="p-3 h-1/3 flex flex-col justify-between bg-gradient-to-t from-black/20 to-transparent">
-                                    <div>
-                                        <h2 className="text-sm font-semibold text-white mb-1 line-clamp-1 group-hover:text-cyan-300 transition-colors duration-300">
-                                            {fav.title || 'Unnamed Product'}
-                                        </h2>
-                                        {fav.description && (
-                                            <p className="text-xs text-white/70 mb-1 line-clamp-1">{fav.description}</p>
-                                        )}
-                                        {fav.category && (
-                                            <span className="inline-block text-xs bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-center mb-1">
-                                                {fav.category}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center justify-center">
-                                        <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                            ${fav.price?.toFixed(2) || '0.00'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                            />
                         ))}
                     </div>
                 )}

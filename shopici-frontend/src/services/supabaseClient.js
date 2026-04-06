@@ -246,3 +246,82 @@ export const getCollectionById = async (collectionId) => {
     }
     return data;
 };
+
+export const addProductToCollection = async (userId, productId, collectionId) => {
+    const { data: favoriteData, error: favoriteError } = await supabase
+        .from('favorites')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('product_id', productId)
+        .single();
+
+    if (favoriteError || !favoriteData) {
+        console.error('Product not found in user favorites:', favoriteError);
+        return false;
+    }
+
+    const { error: updateError } = await supabase
+        .from('favorites')
+        .update({
+            favorite_collection_id: collectionId,
+        })
+        .eq('user_id', userId)
+        .eq('product_id', productId);
+
+    if (updateError) {
+        console.error('Error adding product to collection:', updateError);
+        return false;
+    }
+
+    return true;
+};
+
+export const removeProductFromCollection = async (userId, productId) => {
+    const { error } = await supabase
+        .from('favorites')
+        .update({
+            favorite_collection_id: null,
+        })
+        .eq('user_id', userId)
+        .eq('product_id', productId);
+
+    if (error) {
+        console.error('Error removing product from collection:', error);
+        return false;
+    }
+
+    return true;
+};
+
+export const deleteCollection = async (collectionId) => {
+    const { error } = await supabase
+        .from('favorite_collection')
+        .delete()
+        .eq('id', collectionId);
+
+    if (error) {
+        console.error('Error deleting collection:', error);
+        return false;
+    }
+
+    await supabase
+        .from('favorites')
+        .update({ favorite_collection_id: null })
+        .eq('favorite_collection_id', collectionId);
+
+    return true;
+};
+
+export const deleteAppreciation = async (appreciationId) => {
+    const { error } = await supabase
+        .from('product_appreciation')
+        .delete()
+        .eq('id', appreciationId);
+
+    if (error) {
+        console.error('Error deleting appreciation:', error);
+        return false;
+    }
+
+    return true;
+};
