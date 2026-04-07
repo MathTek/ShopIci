@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+export interface PromoCode {
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  scope: 'cart' | 'product';
+  productId?: string;
+  active?: boolean;
+}
+
 export interface CartItem {
   id: string;
   title: string;
@@ -14,6 +23,11 @@ interface CartContextValue {
   removeItem: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
   clearCart: () => void;
+  applyPromo: (promo: PromoCode) => void;
+  clearPromo: () => void;
+  appliedPromo: PromoCode | null;
+  discountAmount: number;
+  finalTotal: number;
   totalItems: number;
   totalPrice: number;
 }
@@ -31,6 +45,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [];
     }
   });
+  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
 
   useEffect(() => {
     try {
@@ -60,11 +75,59 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => setItems([]);
 
+  const applyPromo = (promo: PromoCode) => {
+    setAppliedPromo(promo);
+  };
+
+  const clearPromo = () => {
+    setAppliedPromo(null);
+  };
+
   const totalItems = items.reduce((s, i) => s + i.qty, 0);
   const totalPrice = items.reduce((s, i) => s + (i.price || 0) * i.qty, 0);
 
+  const discountAmount = (() => {
+    if (!appliedPromo || items.length === 0) return 0;
+
+    if (appliedPromo.scope === 'cart') {
+      if (appliedPromo.type === 'percentage') {
+        return Math.min(totalPrice, totalPrice * (appliedPromo.value / 100));
+      }
+      return Math.min(totalPrice, appliedPromo.value);
+    }
+
+    const matchedSubtotal = items
+      .filter((item) => item.id === appliedPromo.productId)
+      .reduce((sum, item) => sum + (item.price || 0) * item.qty, 0);
+
+    if (matchedSubtotal <= 0) return 0;
+
+    if (appliedPromo.type === 'percentage') {
+      return Math.min(matchedSubtotal, matchedSubtotal * (appliedPromo.value / 100));
+    }
+
+    return Math.min(matchedSubtotal, appliedPromo.value);
+  })();
+
+  const finalTotal = Math.max(0, totalPrice - discountAmount);
+
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice }}>
+    <CartContext.Provider
+      value={{
+        items,
+        addItem,
+        removeItem,
+        updateQty,
+        clearCart,
+        applyPromo,
+        clearPromo,
+        appliedPromo,
+        discountAmount,
+        finalTotal,
+        totalItems,
+        totalPrice,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

@@ -1,0 +1,9 @@
+[
+  {
+    "code": "SAVE10",
+    "type": "percentage",
+    "value": 10,
+    "scope": "cart",
+    "active": true
+  },
+]

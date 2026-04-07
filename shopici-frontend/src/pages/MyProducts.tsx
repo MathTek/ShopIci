@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import ProductCreationForm  from "../components/ProductCreationForm";
+import type { PromoCode } from "../contexts/CartContext";
+import { saveLocalPromoCode, normalizePromoCode } from "../services/promoCodes";
 
 const MyProducts = () => {
     const [products, setProducts] = useState<Array<any>>([]);
@@ -9,6 +11,15 @@ const MyProducts = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [isForUpdate, setIsForUpdate] = useState(false);
     const [product, setProduct] = useState<any>(null);
+    const [promoForm, setPromoForm] = useState({
+        code: '',
+        type: 'percentage' as 'percentage' | 'fixed',
+        value: '',
+        scope: 'cart' as 'cart' | 'product',
+        productId: '',
+    });
+    const [promoFeedback, setPromoFeedback] = useState<string | null>(null);
+    const [promoError, setPromoError] = useState<string | null>(null);
     const navigate = useNavigate();
 
 
@@ -126,6 +137,53 @@ const MyProducts = () => {
         setShowCreateForm(false);
     };
 
+    const handleCreatePromoCode = () => {
+        setPromoError(null);
+        setPromoFeedback(null);
+
+        const normalizedCode = normalizePromoCode(promoForm.code);
+        const parsedValue = Number(promoForm.value);
+
+        if (!normalizedCode) {
+            setPromoError('Promo code is required.');
+            return;
+        }
+
+        if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+            setPromoError('Promo value must be greater than 0.');
+            return;
+        }
+
+        if (promoForm.type === 'percentage' && parsedValue > 100) {
+            setPromoError('Percentage cannot exceed 100.');
+            return;
+        }
+
+        if (promoForm.scope === 'product' && !promoForm.productId) {
+            setPromoError('Select a product for product-specific promo codes.');
+            return;
+        }
+
+        const promo: PromoCode = {
+            code: normalizedCode,
+            type: promoForm.type,
+            value: parsedValue,
+            scope: promoForm.scope,
+            productId: promoForm.scope === 'product' ? promoForm.productId : undefined,
+            active: true,
+        };
+
+        saveLocalPromoCode(promo);
+        setPromoFeedback(`Promo code ${normalizedCode} created and ready for checkout validation.`);
+        setPromoForm({
+            code: '',
+            type: 'percentage',
+            value: '',
+            scope: 'cart',
+            productId: '',
+        });
+    };
+
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200">
            
@@ -162,6 +220,87 @@ const MyProducts = () => {
                             </svg>
                             Add product
                         </button>
+                    </div>
+
+                    <div className="mb-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
+                        <h2 className="text-2xl font-bold text-white mb-2">Create Promo Code</h2>
+                        <p className="text-white/70 mb-5 text-sm">
+                            Temporary implementation: codes are saved locally in the browser and can also be listed in <span className="font-semibold">public/promo-codes.txt</span>.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                            <input
+                                type="text"
+                                value={promoForm.code}
+                                onChange={(e) => setPromoForm(prev => ({ ...prev, code: e.target.value }))}
+                                placeholder="Code (e.g. SAVE10)"
+                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+                            />
+
+                            <select
+                                value={promoForm.type}
+                                onChange={(e) => setPromoForm(prev => ({ ...prev, type: e.target.value as 'percentage' | 'fixed' }))}
+                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
+                            >
+                                <option className="bg-zinc-900" value="percentage">Percentage</option>
+                                <option className="bg-zinc-900" value="fixed">Fixed amount (€)</option>
+                            </select>
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={promoForm.value}
+                                onChange={(e) => setPromoForm(prev => ({ ...prev, value: e.target.value }))}
+                                placeholder="Value"
+                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+                            />
+
+                            <select
+                                value={promoForm.scope}
+                                onChange={(e) => setPromoForm(prev => ({ ...prev, scope: e.target.value as 'cart' | 'product', productId: e.target.value === 'cart' ? '' : prev.productId }))}
+                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
+                            >
+                                <option className="bg-zinc-900" value="cart">Entire Cart</option>
+                                <option className="bg-zinc-900" value="product">Specific Product</option>
+                            </select>
+
+                            {promoForm.scope === 'product' ? (
+                                <select
+                                    value={promoForm.productId}
+                                    onChange={(e) => setPromoForm(prev => ({ ...prev, productId: e.target.value }))}
+                                    className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
+                                >
+                                    <option className="bg-zinc-900" value="">Select product</option>
+                                    {products.map((item) => (
+                                        <option className="bg-zinc-900" key={item.id} value={item.id}>
+                                            {item.title || item.name || item.id}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <button
+                                    onClick={handleCreatePromoCode}
+                                    className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold"
+                                >
+                                    Create Code
+                                </button>
+                            )}
+                        </div>
+
+                        {promoForm.scope === 'product' && (
+                            <div className="mt-3">
+                                <button
+                                    onClick={handleCreatePromoCode}
+                                    className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold"
+                                >
+                                    Create Code
+                                </button>
+                            </div>
+                        )}
+
+                        {promoError && <p className="mt-3 text-red-300 text-sm">{promoError}</p>}
+                        {promoFeedback && <p className="mt-3 text-green-300 text-sm">{promoFeedback}</p>}
                     </div>
 
                    

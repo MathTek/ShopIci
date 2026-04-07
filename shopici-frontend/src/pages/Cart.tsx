@@ -1,18 +1,79 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { buildPromoPreview, findPromoCode, normalizePromoCode, validatePromoForCart } from '../services/promoCodes';
 
 const Cart: React.FC = () => {
-  const { items, removeItem, updateQty, totalPrice, clearCart } = useCart();
+  const {
+    items,
+    removeItem,
+    updateQty,
+    totalPrice,
+    clearCart,
+    applyPromo,
+    clearPromo,
+    appliedPromo,
+    discountAmount,
+    finalTotal,
+  } = useCart();
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
   const navigate = useNavigate();
+  const normalizedPromoInput = normalizePromoCode(promoInput);
+  const isApplyDisabled = !normalizedPromoInput || promoLoading || !!appliedPromo;
+
+  const handleApplyPromo = async () => {
+    setPromoError(null);
+    const normalizedCode = normalizePromoCode(promoInput.trim());
+
+    if (appliedPromo) {
+      setPromoError('A promo code is already applied. Remove it to use another code.');
+      return;
+    }
+
+    if (!normalizedCode) {
+      setPromoError('Enter your promo code first.');
+      return;
+    }
+
+    setPromoInput(normalizedCode);
+
+    setPromoLoading(true);
+    const promo = await findPromoCode(normalizedCode);
+    setPromoLoading(false);
+
+    if (!promo) {
+      setPromoError('Invalid or expired promo code.');
+      return;
+    }
+
+    const validation = validatePromoForCart(promo, items);
+    if (!validation.valid) {
+      setPromoError(validation.message || 'This code cannot be applied to your cart.');
+      return;
+    }
+
+    applyPromo(promo);
+    setPromoError(null);
+  };
+
+  const handleRemovePromo = () => {
+    clearPromo();
+    setPromoInput('');
+    setPromoError(null);
+  };
 
   const handleCheckout = async () => {
     setPlacing(true);
     await new Promise(r => setTimeout(r, 900));
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
     clearCart();
+    clearPromo();
+    setPromoInput('');
+    setPromoError(null);
     setSuccess(orderId);
     setPlacing(false);
   };
@@ -140,10 +201,84 @@ return (
                 <p className="text-sm text-slate-400 mt-1">{items.length} items</p>
               </div>
 
+              <div className="mt-5 mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 shadow-[0_6px_20px_rgba(0,0,0,0.18)] space-y-4">
+                <div>
+                  <h4 className="text-base font-semibold text-white">Apply Promo Code</h4>
+                  <p className="text-sm text-slate-400 mt-1">Enter your code to get a discount</p>
+                </div>
+
+                {!appliedPromo && (
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 mb-2">
+                  <input
+                    id="promo-code-input"
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value.toUpperCase().trimStart());
+                      if (promoError) setPromoError(null);
+                    }}
+                    placeholder="Enter your promo code"
+                    disabled={!!appliedPromo}
+                    className="w-full h-11 sm:h-12 px-4 rounded-lg bg-white/5 border border-white/20 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    disabled={isApplyDisabled}
+                    className="h-11 sm:h-12 sm:min-w-[126px] px-5 rounded-lg bg-gradient-to-r from-indigo-400 to-purple-400 text-white font-semibold hover:bg-cyan-400 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                  >
+                    {promoLoading ? 'Applying...' : 'Apply'}
+                  </button>
+                </div>
+                )}
+
+                {appliedPromo && (
+                  <div className="mt-3 rounded-xl border border-emerald-400/35 bg-emerald-500/10 px-4 py-3.5 text-sm text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.08)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">✅ Code {appliedPromo.code} applied</p>
+                        <p className="text-xs text-emerald-100/80 mt-0.5">{buildPromoPreview(appliedPromo)}</p>
+                        <p className="text-xs text-emerald-200/90 mt-1">Discount: -{discountAmount.toFixed(2)} €</p>
+                      </div>
+                      <button
+                        onClick={handleRemovePromo}
+                        className="px-3.5 py-2 rounded-md border border-red-400/50 bg-red-500/10 text-xs font-semibold text-red-200 hover:bg-red-500/20 transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {promoError && (
+                  <p className="text-sm text-red-300 rounded-md bg-red-500/10 border border-red-400/30 px-3 py-2">
+                    ❌ {promoError}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2 mb-6 border-t border-white/10 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Subtotal</span>
+                  <span className="text-white">{totalPrice.toFixed(2)} €</span>
+                </div>
+                {appliedPromo && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-300">Promo ({appliedPromo.code})</span>
+                    <span className="text-green-300">- {discountAmount.toFixed(2)} €</span>
+                  </div>
+                )}
+                {!appliedPromo && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Discount</span>
+                    <span className="text-green-300">- {discountAmount.toFixed(2)} €</span>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-center mb-6">
                 <span className="text-slate-400">Estimated total</span>
                 <div className="text-2xl font-bold text-white tracking-tight">
-                  {totalPrice.toFixed(2)} €
+                  {finalTotal.toFixed(2)} €
                 </div>
               </div>
 
@@ -158,7 +293,7 @@ return (
                 <button
                   onClick={handleCheckout}
                   disabled={placing}
-                  className="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition duration-200 shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-400 text-white font-semibold transition duration-200 shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {placing ? 'Processing...' : 'Place Order'}
                 </button>

@@ -11,6 +11,8 @@ const Products = () => {
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
     const [sortBy, setSortBy] = useState<string>('newest');
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+    const [compareError, setCompareError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addItem } = useCart();
 
@@ -107,6 +109,60 @@ const Products = () => {
         const diffInDays = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
         return diffInDays < 3;
     };
+
+    const comparisonProducts = products.filter((product) => comparisonIds.includes(product.id));
+
+    const toggleComparison = (productId: string) => {
+        setCompareError(null);
+        setComparisonIds((prev) => {
+            if (prev.includes(productId)) {
+                return prev.filter((id) => id !== productId);
+            }
+
+            if (prev.length >= 3) {
+                setCompareError('You can compare up to 3 products.');
+                return prev;
+            }
+
+            return [...prev, productId];
+        });
+    };
+
+    const getKeySpecsLabel = (product: any) => {
+        if (Array.isArray(product.specifications) && product.specifications.length > 0) {
+            return product.specifications.slice(0, 3).join(' • ');
+        }
+
+        if (typeof product.specifications === 'string' && product.specifications.trim()) {
+            return product.specifications;
+        }
+
+        if (product.key_characteristics && Array.isArray(product.key_characteristics)) {
+            return product.key_characteristics.slice(0, 3).join(' • ');
+        }
+
+        if (product.description) {
+            return product.description.length > 90
+                ? `${product.description.slice(0, 90)}...`
+                : product.description;
+        }
+
+        return 'No specifications provided';
+    };
+
+    const comparisonPriceValues = comparisonProducts.map((product) => `${(product.price || 0).toFixed(2)} €`);
+    const comparisonSpecsValues = comparisonProducts.map((product) => getKeySpecsLabel(product));
+    const MAX_COMPARE_SLOTS = 3;
+    const comparisonSlots = Array.from({ length: MAX_COMPARE_SLOTS }, (_, index) => comparisonProducts[index] || null);
+
+    const hasDifferences = (values: string[]) => {
+        if (values.length <= 1) return false;
+        const normalized = values.map((value) => value.trim().toLowerCase());
+        return new Set(normalized).size > 1;
+    };
+
+    const hasPriceDifferences = hasDifferences(comparisonPriceValues);
+    const hasSpecsDifferences = hasDifferences(comparisonSpecsValues);
 
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-200">
@@ -293,6 +349,158 @@ const Products = () => {
 
             
                     <div className="px-4 sm:px-6 lg:px-8">
+                        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
+                            <p className="text-sm text-white/75">
+                                Select products to compare (<span className="font-semibold text-cyan-300">{comparisonIds.length}/3</span>)
+                            </p>
+                            {comparisonIds.length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        setComparisonIds([]);
+                                        setCompareError(null);
+                                    }}
+                                    className="text-sm px-3 py-1.5 rounded-lg border border-white/20 text-white/80 hover:bg-white/10"
+                                >
+                                    Reset selection
+                                </button>
+                            )}
+                        </div>
+
+                        {comparisonProducts.length > 0 && (
+                            <div className="mb-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 sm:p-5">
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">Compare Products</h2>
+                                        <p className="text-xs sm:text-sm text-white/60 mt-1">Sticky headers help you scan differences quickly.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setComparisonIds([]);
+                                            setCompareError(null);
+                                        }}
+                                        className="px-3 py-2 rounded-lg border border-white/20 text-white/80 hover:bg-white/10"
+                                    >
+                                        Clear comparison
+                                    </button>
+                                </div>
+
+                                <div className="overflow-x-auto rounded-xl border border-white/10">
+                                    <div className="min-w-[940px] p-3 space-y-3">
+                                        <div
+                                            className="grid gap-3 items-stretch sticky top-0 z-20 bg-[#0f172a] pb-1"
+                                            style={{ gridTemplateColumns: '220px repeat(3, minmax(220px, 1fr))' }}
+                                        >
+                                            <div className="rounded-xl border border-white/10 bg-[#111c34] px-4 py-3 flex items-center">
+                                                <p className="text-left text-xs uppercase tracking-wide text-white/60">Product</p>
+                                            </div>
+
+                                            {comparisonSlots.map((product, index) => (
+                                                <div key={product?.id || `empty-slot-${index}`} className="h-full">
+                                                    {product ? (
+                                                        <div className="rounded-xl border border-white/15 bg-white/5 p-3 h-full min-h-[370px] flex flex-col">
+                                                            <img
+                                                                src={product.image_urls || '/placeholder-image.jpg'}
+                                                                alt={product.title || product.name || 'Product'}
+                                                                className="w-full h-28 object-cover rounded-lg"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = '/placeholder-image.jpg';
+                                                                }}
+                                                            />
+
+                                                            <div className="mt-3 min-h-[44px]">
+                                                                <h3 className="text-sm font-semibold text-white line-clamp-2 break-words leading-tight">
+                                                                    {product.title || product.name || 'Product'}
+                                                                </h3>
+                                                            </div>
+
+                                                            <p className="mt-2 text-sm font-semibold text-cyan-300">
+                                                                {(product.price || 0).toFixed(2)} €
+                                                            </p>
+
+                                                            <p className="mt-2 min-h-[40px] text-xs text-white/60 line-clamp-2 break-words">
+                                                                {getKeySpecsLabel(product)}
+                                                            </p>
+
+                                                            <div className="mt-auto flex flex-col gap-2 pt-3">
+                                                                <button
+                                                                    onClick={() => addItem({ id: product.id, title: product.title || product.name || 'Product', price: product.price || 0, image_urls: product.image_urls || product.image_url })}
+                                                                    className="w-full px-3 py-2 rounded-md bg-gradient-to-r from-indigo-400 to-purple-400 text-white text-xs font-semibold hover:bg-cyan-400 transition"
+                                                                >
+                                                                    Add to cart
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => navigate(`/products/${product.id}`)}
+                                                                    className="w-full px-3 py-2 rounded-md border border-white/20 text-white/90 text-xs font-semibold hover:bg-white/10 transition"
+                                                                >
+                                                                    View
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => toggleComparison(product.id)}
+                                                                    className="w-full px-3 py-2 rounded-md border border-red-400/50 bg-red-500/10 text-red-200 text-xs font-semibold hover:bg-red-500/20 transition"
+                                                                >
+                                                                    Remove from comparison
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="rounded-xl border border-dashed border-white/20 bg-white/5 p-4 h-full min-h-[370px] flex items-center justify-center">
+                                                            <p className="text-sm text-white/45 text-center">Select a product to compare</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div
+                                            className="grid gap-3 items-stretch"
+                                            style={{ gridTemplateColumns: '220px repeat(3, minmax(220px, 1fr))' }}
+                                        >
+                                            <div className="rounded-xl border border-white/10 bg-[#111c34] px-4 py-4 text-sm font-medium text-white/80 flex items-center">
+                                                Price
+                                            </div>
+                                            {comparisonSlots.map((product, index) => (
+                                                <div
+                                                    key={`price-${product?.id || index}`}
+                                                    className={`rounded-xl border border-white/10 px-4 py-4 text-sm text-left ${product && hasPriceDifferences ? 'text-cyan-300 font-semibold bg-cyan-500/10' : 'text-white/90 bg-white/5'}`}
+                                                >
+                                                    {product ? `${(product.price || 0).toFixed(2)} €` : '—'}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div
+                                            className="grid gap-3 items-stretch"
+                                            style={{ gridTemplateColumns: '220px repeat(3, minmax(220px, 1fr))' }}
+                                        >
+                                            <div className="rounded-xl border border-white/10 bg-[#111c34] px-4 py-4 text-sm font-medium text-white/80 flex items-center">
+                                                Key specifications
+                                            </div>
+                                            {comparisonSlots.map((product, index) => (
+                                                <div
+                                                    key={`specs-${product?.id || index}`}
+                                                    className={`rounded-xl border border-white/10 px-4 py-4 text-sm text-left leading-relaxed break-words ${product && hasSpecsDifferences ? 'text-violet-200 font-semibold bg-violet-500/10' : 'text-white/85 bg-white/5'}`}
+                                                >
+                                                    <p className="line-clamp-3">{product ? getKeySpecsLabel(product) : '—'}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {(hasPriceDifferences || hasSpecsDifferences) && (
+                                    <div className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
+                                        Highlighted cells indicate differences across selected products.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {compareError && (
+                            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/20 border border-red-400/40 text-red-200 text-sm">
+                                {compareError}
+                            </div>
+                        )}
+
                         {filteredProducts.length === 0 ? (
                    
                             <div className="flex flex-col items-center justify-center py-16 sm:py-24">
@@ -372,6 +580,40 @@ const Products = () => {
 
                                             <div className="absolute top-2 right-2">
                                                 <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
+                                            </div>
+
+                                            <div className="absolute bottom-2 left-2 z-10 max-w-[calc(100%-1rem)]">
+                                                {(() => {
+                                                    const isSelected = comparisonIds.includes(product.id);
+                                                    const limitReached = comparisonIds.length >= MAX_COMPARE_SLOTS;
+                                                    const disabled = !isSelected && limitReached;
+
+                                                    return (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (disabled) {
+                                                            setCompareError('You can compare up to 3 products. Remove one to add another.');
+                                                            return;
+                                                        }
+                                                        toggleComparison(product.id);
+                                                    }}
+                                                    disabled={disabled}
+                                                    className={`inline-flex max-w-full items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] sm:text-xs font-semibold border transition shadow-md backdrop-blur-md whitespace-nowrap ${isSelected
+                                                        ? 'bg-emerald-500/95 text-black border-emerald-300'
+                                                        : disabled
+                                                            ? 'bg-slate-800/70 text-white/40 border-white/15 cursor-not-allowed'
+                                                            : 'bg-indigo-500/90 text-white border-indigo-300 hover:bg-indigo-400'
+                                                        }`}
+                                                    aria-label={isSelected ? 'In comparison' : 'Add to compare'}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10M7 12h10M7 17h10" />
+                                                    </svg>
+                                                    {isSelected ? 'In Comparison' : disabled ? 'Limit Reached' : 'Add to Compare'}
+                                                </button>
+                                                    );
+                                                })()}
                                             </div>
 
                                     
