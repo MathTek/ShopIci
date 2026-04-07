@@ -27,7 +27,7 @@ const Cart: React.FC = () => {
 
   const handleApplyPromo = async () => {
     setPromoError(null);
-    const normalizedCode = normalizePromoCode(promoInput.trim());
+    const normalizedCode = normalizePromoCode(promoInput);
 
     if (appliedPromo) {
       setPromoError('A promo code is already applied. Remove it to use another code.');
@@ -42,13 +42,15 @@ const Cart: React.FC = () => {
     setPromoInput(normalizedCode);
 
     setPromoLoading(true);
-    const promo = await findPromoCode(normalizedCode);
-    setPromoLoading(false);
-
-    if (!promo) {
-      setPromoError('Invalid or expired promo code.');
+    let promo;
+    try {
+      promo = await findPromoCode(normalizedCode);
+    } catch (error) {
+      setPromoLoading(false);
+      setPromoError(error instanceof Error ? error.message : 'Invalid or inactive promo code');
       return;
     }
+    setPromoLoading(false);
 
     const validation = validatePromoForCart(promo, items);
     if (!validation.valid) {
@@ -214,7 +216,7 @@ return (
                     type="text"
                     value={promoInput}
                     onChange={(e) => {
-                      setPromoInput(e.target.value.toUpperCase().trimStart());
+                      setPromoInput(e.target.value.toUpperCase());
                       if (promoError) setPromoError(null);
                     }}
                     placeholder="Enter your promo code"

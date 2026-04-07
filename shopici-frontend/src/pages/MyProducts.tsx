@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import ProductCreationForm  from "../components/ProductCreationForm";
-import type { PromoCode } from "../contexts/CartContext";
-import { saveLocalPromoCode, normalizePromoCode } from "../services/promoCodes";
+import { normalizePromoCode } from "../services/promoCodes";
 
 const MyProducts = () => {
     const [products, setProducts] = useState<Array<any>>([]);
@@ -11,15 +10,16 @@ const MyProducts = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [isForUpdate, setIsForUpdate] = useState(false);
     const [product, setProduct] = useState<any>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [promoForm, setPromoForm] = useState({
         code: '',
         type: 'percentage' as 'percentage' | 'fixed',
         value: '',
-        scope: 'cart' as 'cart' | 'product',
         productId: '',
     });
     const [promoFeedback, setPromoFeedback] = useState<string | null>(null);
     const [promoError, setPromoError] = useState<string | null>(null);
+    const [isCreatingPromo, setIsCreatingPromo] = useState(false);
     const navigate = useNavigate();
 
 
@@ -32,6 +32,7 @@ const MyProducts = () => {
             }
 
             const userId = session.user.id;
+            setCurrentUserId(userId);
             const { data: productsData, error } = await supabase
                 .from('products')
                 .select('*')
@@ -137,15 +138,32 @@ const MyProducts = () => {
         setShowCreateForm(false);
     };
 
-    const handleCreatePromoCode = () => {
+    const handleCreatePromoCode = async () => {
         setPromoError(null);
         setPromoFeedback(null);
+        setIsCreatingPromo(false);
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.user) {
+            setPromoError('You must be logged in to create promo codes.');
+            navigate('/login');
+            return;
+        }
+
+        const currentUserId = session.user.id;
+        setCurrentUserId(currentUserId);
 
         const normalizedCode = normalizePromoCode(promoForm.code);
         const parsedValue = Number(promoForm.value);
 
         if (!normalizedCode) {
             setPromoError('Promo code is required.');
+            return;
+        }
+
+        if (!promoForm.type) {
+            setPromoError('Select a discount type.');
             return;
         }
 
@@ -159,27 +177,57 @@ const MyProducts = () => {
             return;
         }
 
-        if (promoForm.scope === 'product' && !promoForm.productId) {
-            setPromoError('Select a product for product-specific promo codes.');
+        if (!promoForm.productId) {
+            setPromoError('Select one of your products for this promo code.');
             return;
         }
 
-        const promo: PromoCode = {
+        const ownedProduct = products.find((item) => item.id === promoForm.productId && item.user_id === currentUserId);
+
+        if (!ownedProduct) {
+            setPromoError('You can only create promo codes for your own products.');
+            return;
+        }
+
+        const promoPayload = {
             code: normalizedCode,
             type: promoForm.type,
             value: parsedValue,
-            scope: promoForm.scope,
-            productId: promoForm.scope === 'product' ? promoForm.productId : undefined,
-            active: true,
+            product_id: promoForm.productId,
+            user_id: currentUserId,
+            is_active: true,
         };
 
-        saveLocalPromoCode(promo);
-        setPromoFeedback(`Promo code ${normalizedCode} created and ready for checkout validation.`);
+        setIsCreatingPromo(true);
+
+        const { error } = await supabase
+            .from('promo')
+            .insert([promoPayload]);
+
+        setIsCreatingPromo(false);
+
+        if (error) {
+            const message = error.message?.toLowerCase() || '';
+
+            if (message.includes('row-level security') || message.includes('unauthorized promo creation')) {
+                setPromoError('You can only create promo codes for your own products.');
+                return;
+            }
+
+            if (message.includes('duplicate') || message.includes('unique')) {
+                setPromoError('This promo code already exists. Choose another code.');
+                return;
+            }
+
+            setPromoError(error.message || 'Failed to create promo code.');
+            return;
+        }
+
+        setPromoFeedback(`Promo code ${normalizedCode} created successfully.`);
         setPromoForm({
             code: '',
             type: 'percentage',
             value: '',
-            scope: 'cart',
             productId: '',
         });
     };
@@ -222,85 +270,123 @@ const MyProducts = () => {
                         </button>
                     </div>
 
-                    <div className="mb-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
-                        <h2 className="text-2xl font-bold text-white mb-2">Create Promo Code</h2>
-                        <p className="text-white/70 mb-5 text-sm">
-                            Temporary implementation: codes are saved locally in the browser and can also be listed in <span className="font-semibold">public/promo-codes.txt</span>.
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                            <input
-                                type="text"
-                                value={promoForm.code}
-                                onChange={(e) => setPromoForm(prev => ({ ...prev, code: e.target.value }))}
-                                placeholder="Code (e.g. SAVE10)"
-                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
-                            />
-
-                            <select
-                                value={promoForm.type}
-                                onChange={(e) => setPromoForm(prev => ({ ...prev, type: e.target.value as 'percentage' | 'fixed' }))}
-                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
-                            >
-                                <option className="bg-zinc-900" value="percentage">Percentage</option>
-                                <option className="bg-zinc-900" value="fixed">Fixed amount (€)</option>
-                            </select>
-
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={promoForm.value}
-                                onChange={(e) => setPromoForm(prev => ({ ...prev, value: e.target.value }))}
-                                placeholder="Value"
-                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
-                            />
-
-                            <select
-                                value={promoForm.scope}
-                                onChange={(e) => setPromoForm(prev => ({ ...prev, scope: e.target.value as 'cart' | 'product', productId: e.target.value === 'cart' ? '' : prev.productId }))}
-                                className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
-                            >
-                                <option className="bg-zinc-900" value="cart">Entire Cart</option>
-                                <option className="bg-zinc-900" value="product">Specific Product</option>
-                            </select>
-
-                            {promoForm.scope === 'product' ? (
-                                <select
-                                    value={promoForm.productId}
-                                    onChange={(e) => setPromoForm(prev => ({ ...prev, productId: e.target.value }))}
-                                    className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
-                                >
-                                    <option className="bg-zinc-900" value="">Select product</option>
-                                    {products.map((item) => (
-                                        <option className="bg-zinc-900" key={item.id} value={item.id}>
-                                            {item.title || item.name || item.id}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <button
-                                    onClick={handleCreatePromoCode}
-                                    className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold"
-                                >
-                                    Create Code
-                                </button>
-                            )}
+                    <div className="mb-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-7">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-white mb-2">Create Promo Code</h2>
+                            <p className="text-white/70 text-sm">
+                                Create product-specific promo codes stored in the promo table. You can only attach codes to products you own.
+                            </p>
                         </div>
 
-                        {promoForm.scope === 'product' && (
-                            <div className="mt-3">
-                                <button
-                                    onClick={handleCreatePromoCode}
-                                    className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold"
-                                >
-                                    Create Code
-                                </button>
-                            </div>
-                        )}
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div className="rounded-2xl border border-white/15 bg-white/5 p-5 space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-cyan-300 mb-1">1️⃣ Discount details</p>
+                                    <p className="text-xs text-white/55">Choose the code, discount type, and value.</p>
+                                </div>
 
-                        {promoError && <p className="mt-3 text-red-300 text-sm">{promoError}</p>}
-                        {promoFeedback && <p className="mt-3 text-green-300 text-sm">{promoFeedback}</p>}
+                                <div className="space-y-3">
+                                    <input
+                                        type="text"
+                                        value={promoForm.code}
+                                        onChange={(e) => setPromoForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                        placeholder="Enter promo code (e.g. SAVE10)"
+                                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+                                    />
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <select
+                                            value={promoForm.type}
+                                            onChange={(e) => setPromoForm(prev => ({ ...prev, type: e.target.value as 'percentage' | 'fixed' }))}
+                                            className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
+                                        >
+                                            <option className="bg-zinc-900" value="percentage">Percentage discount</option>
+                                            <option className="bg-zinc-900" value="fixed">Fixed amount (€)</option>
+                                        </select>
+
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={promoForm.value}
+                                            onChange={(e) => setPromoForm(prev => ({ ...prev, value: e.target.value }))}
+                                            placeholder="Discount value"
+                                            className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/15 bg-white/5 p-5 space-y-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-cyan-300 mb-1">2️⃣ Choose your product</p>
+                                    <p className="text-xs text-white/55">Only your own products are shown. Select one product to attach the promo code.</p>
+                                </div>
+
+                                {products.length === 0 ? (
+                                    <div className="rounded-xl border border-dashed border-white/15 bg-black/10 p-4 text-sm text-white/60">
+                                        Create a product first before creating a promo code.
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                                        {products.map((item) => {
+                                            const isSelected = promoForm.productId === item.id;
+
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => setPromoForm(prev => ({ ...prev, productId: item.id }))}
+                                                    className={`w-full text-left rounded-xl border p-3 transition flex items-center gap-3 ${isSelected
+                                                        ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]'
+                                                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    <img
+                                                        src={item.image_urls || '/placeholder-image.jpg'}
+                                                        alt={item.title || item.name || 'Product'}
+                                                        className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                                                    />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-semibold text-white truncate">
+                                                            {item.title || item.name || 'Unnamed Product'}
+                                                        </p>
+                                                        <p className="text-xs text-white/55 truncate mt-1">
+                                                            {(item.price || 0).toFixed(2)} €
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="text-sm text-white/55">
+                                {currentUserId ? 'Promo codes are created from your authenticated seller account.' : 'Log in to create promo codes.'}
+                            </div>
+
+                            <button
+                                onClick={handleCreatePromoCode}
+                                disabled={isCreatingPromo || products.length === 0}
+                                className="btn-gradient text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isCreatingPromo ? 'Creating...' : 'Create Code'}
+                            </button>
+                        </div>
+
+                        {promoError && (
+                            <p className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
+                                {promoError}
+                            </p>
+                        )}
+                        {promoFeedback && (
+                            <p className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-emerald-200 text-sm">
+                                {promoFeedback}
+                            </p>
+                        )}
                     </div>
 
                    

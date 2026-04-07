@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export interface PromoCode {
+  id?: string;
   code: string;
   type: 'percentage' | 'fixed';
   value: number;
-  scope: 'cart' | 'product';
-  productId?: string;
-  active?: boolean;
+  product_id?: string | null;
+  is_active?: boolean;
 }
 
 export interface CartItem {
@@ -89,24 +89,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const discountAmount = (() => {
     if (!appliedPromo || items.length === 0) return 0;
 
-    if (appliedPromo.scope === 'cart') {
-      if (appliedPromo.type === 'percentage') {
-        return Math.min(totalPrice, totalPrice * (appliedPromo.value / 100));
-      }
-      return Math.min(totalPrice, appliedPromo.value);
-    }
-
-    const matchedSubtotal = items
-      .filter((item) => item.id === appliedPromo.productId)
+    if (appliedPromo.product_id) {
+      const matchedSubtotal = items
+      .filter((item) => item.id === appliedPromo.product_id)
       .reduce((sum, item) => sum + (item.price || 0) * item.qty, 0);
 
-    if (matchedSubtotal <= 0) return 0;
+      if (matchedSubtotal <= 0) return 0;
 
-    if (appliedPromo.type === 'percentage') {
-      return Math.min(matchedSubtotal, matchedSubtotal * (appliedPromo.value / 100));
+      if (appliedPromo.type === 'percentage') {
+        return Math.min(matchedSubtotal, matchedSubtotal * (appliedPromo.value / 100));
+      }
+
+      return Math.min(matchedSubtotal, appliedPromo.value);
     }
 
-    return Math.min(matchedSubtotal, appliedPromo.value);
+    if (appliedPromo.type === 'percentage') {
+      return Math.min(totalPrice, totalPrice * (appliedPromo.value / 100));
+    }
+
+    return Math.min(totalPrice, appliedPromo.value);
   })();
 
   const finalTotal = Math.max(0, totalPrice - discountAmount);
