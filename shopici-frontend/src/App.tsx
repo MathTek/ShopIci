@@ -18,6 +18,9 @@ const Conversation = lazy(() => import('./pages/Conversation'));
 const Cart = lazy(() => import('./pages/Cart'));
 const MyFavorites = lazy(() => import('./pages/MyFavorites'));
 const FavoriteCollection = lazy(() => import('./pages/FavoriteCollection'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function App() {
   return (
@@ -40,6 +43,9 @@ function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/my-favorites" element={<MyFavorites />} />
               <Route path="/collections/:id" element={<FavoriteCollection />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/settings" element={<Settings />} />
             </Routes>
           </Suspense>
         </div>
