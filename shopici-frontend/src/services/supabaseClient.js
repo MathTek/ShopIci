@@ -346,18 +346,3 @@ export const calculateAverageRating = async (productId) => {
 
     return averageRating;
 }
-
-export const createPromotion = async (productId, newPrice) => {
-    console.log('Creating promotion for product:', { productId, newPrice });
-    const { error } = await supabase
-        .from('products')
-        .update({ promo_price: newPrice })
-        .eq('id', productId);
-
-    if (error) {
-        console.error('Error creating promotion:', error);
-        return false;
-    }
-
-    return true;
-};

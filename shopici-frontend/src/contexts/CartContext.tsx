@@ -7,6 +7,8 @@ export interface PromoCode {
   value: number;
   product_id?: string | null;
   is_active?: boolean;
+  promo_mode?: 'code' | 'scheduled';
+  title?: string | null;
 }
 
 export interface CartItem {

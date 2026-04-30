@@ -2,9 +2,31 @@ import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
+import { attachScheduledPromosToProducts } from "../services/promoCodes";
+
+interface CatalogProduct {
+    id: string;
+    title?: string;
+    name?: string;
+    description?: string;
+    price?: number;
+    displayPrice?: number;
+    originalPrice?: number;
+    hasScheduledPromo?: boolean;
+    promoBadge?: string | null;
+    scheduledPromo?: unknown;
+    image_urls?: string;
+    image_url?: string;
+    category?: string;
+    created_at: string;
+    user_id?: string;
+    specifications?: string[] | string;
+    key_characteristics?: string[];
+    status?: string;
+}
 
 const Products = () => {
-    const [products, setProducts] = useState<Array<any>>([]);
+    const [products, setProducts] = useState<CatalogProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +49,8 @@ const Products = () => {
             if (error) {
                 console.error("Error fetching products:", error);
             } else {
-                setProducts(productsData || []);
+                const productsWithPromotions = await attachScheduledPromosToProducts(productsData || []);
+                setProducts(productsWithPromotions);
             }
         } catch (error) {
             console.error("Error during product loading:", error);
@@ -55,13 +78,17 @@ const Products = () => {
         initializePage();
     }, []);
 
+    const getProductPrice = (product: CatalogProduct) => product.displayPrice ?? product.price ?? 0;
+
     const filteredProducts = products.filter(product => {
-        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory || (product.promo_price !== null && product.category === selectedCategory) || (selectedCategory === 'promotion' && product.promo_price !== null);
+        const matchesCategory = selectedCategory === 'all'
+            || product.category === selectedCategory
+            || (selectedCategory === 'promotion' && Boolean(product.hasScheduledPromo));
         const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             product.description?.toLowerCase().includes(searchTerm.toLowerCase());
         
 
-        const productPrice = product.price || 0;
+        const productPrice = getProductPrice(product);
         const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
         const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
         const matchesPrice = productPrice >= minPrice && productPrice <= maxPrice;
@@ -75,9 +102,9 @@ const Products = () => {
             case 'oldest':
                 return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
             case 'price-low':
-                return (a.price || 0) - (b.price || 0);
+                return getProductPrice(a) - getProductPrice(b);
             case 'price-high':
-                return (b.price || 0) - (a.price || 0);
+                return getProductPrice(b) - getProductPrice(a);
             default:
                 return 0;
         }
@@ -128,7 +155,7 @@ const Products = () => {
         });
     };
 
-    const getKeySpecsLabel = (product: any) => {
+    const getKeySpecsLabel = (product: CatalogProduct) => {
         if (Array.isArray(product.specifications) && product.specifications.length > 0) {
             return product.specifications.slice(0, 3).join(' • ');
         }
@@ -150,7 +177,7 @@ const Products = () => {
         return 'No specifications provided';
     };
 
-    const comparisonPriceValues = comparisonProducts.map((product) => `${(product.price || 0).toFixed(2)} €`);
+    const comparisonPriceValues = comparisonProducts.map((product) => `${getProductPrice(product).toFixed(2)} €`);
     const comparisonSpecsValues = comparisonProducts.map((product) => getKeySpecsLabel(product));
     const MAX_COMPARE_SLOTS = 3;
     const comparisonSlots = Array.from({ length: MAX_COMPARE_SLOTS }, (_, index) => comparisonProducts[index] || null);
@@ -413,9 +440,25 @@ const Products = () => {
                                                                 </h3>
                                                             </div>
 
-                                                            <p className="mt-2 text-sm font-semibold text-cyan-300">
-                                                                {(product.price || 0).toFixed(2)} €
-                                                            </p>
+                                                                <div className="mt-2 space-y-1">
+                                                                    {product.hasScheduledPromo ? (
+                                                                        <>
+                                                                            <p className="text-xs text-red-300 line-through">
+                                                                                {(product.price || 0).toFixed(2)} €
+                                                                            </p>
+                                                                            <p className="text-sm font-semibold text-cyan-300">
+                                                                                {getProductPrice(product).toFixed(2)} €
+                                                                            </p>
+                                                                            {product.promoBadge && (
+                                                                                <p className="text-[11px] text-emerald-300">{product.promoBadge}</p>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <p className="text-sm font-semibold text-cyan-300">
+                                                                            {getProductPrice(product).toFixed(2)} €
+                                                                        </p>
+                                                                    )}
+                                                                </div>
 
                                                             <p className="mt-2 min-h-[40px] text-xs text-white/60 line-clamp-2 break-words">
                                                                 {getKeySpecsLabel(product)}
@@ -423,7 +466,7 @@ const Products = () => {
 
                                                             <div className="mt-auto flex flex-col gap-2 pt-3">
                                                                 <button
-                                                                    onClick={() => addItem({ id: product.id, title: product.title || product.name || 'Product', price: product.price || 0, image_urls: product.image_urls || product.image_url })}
+                                                                    onClick={() => addItem({ id: product.id, title: product.title || product.name || 'Product', price: getProductPrice(product), image_urls: product.image_urls || product.image_url })}
                                                                     className="w-full px-3 py-2 rounded-md bg-gradient-to-r from-indigo-400 to-purple-400 text-white text-xs font-semibold hover:bg-cyan-400 transition"
                                                                 >
                                                                     Add to cart
@@ -463,7 +506,7 @@ const Products = () => {
                                                     key={`price-${product?.id || index}`}
                                                     className={`rounded-xl border border-white/10 px-4 py-4 text-sm text-left ${product && hasPriceDifferences ? 'text-cyan-300 font-semibold bg-cyan-500/10' : 'text-white/90 bg-white/5'}`}
                                                 >
-                                                    {product ? `${(product.price || 0).toFixed(2)} €` : '—'}
+                                                    {product ? `${getProductPrice(product).toFixed(2)} €` : '—'}
                                                 </div>
                                             ))}
                                         </div>
@@ -578,6 +621,15 @@ const Products = () => {
                                                 </div>
                                             )}
 
+                                            {product.hasScheduledPromo && product.promoBadge && (
+                                                <div className="absolute top-4 left-4 mt-16 max-w-[calc(100%-3rem)] group/promo">
+                                                    <div className="rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 px-4 py-1.5 text-s font-bold text-white shadow-xl shadow-emerald-500/40 backdrop-blur-sm border border-emerald-300/60 flex items-center gap-1.5 group-hover/promo:shadow-emerald-500/60 group-hover/promo:from-emerald-300 group-hover/promo:to-teal-300 transition-all duration-200">
+                                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                                        {product.promoBadge}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="absolute top-2 right-2">
                                                 <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
                                             </div>
@@ -619,7 +671,7 @@ const Products = () => {
                                     
                                             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); addItem({ id: product.id, title: product.title || product.name || 'Product', price: product.price || 0, image_urls: product.image_urls || product.image_url }); }}
+                                                    onClick={(e) => { e.stopPropagation(); addItem({ id: product.id, title: product.title || product.name || 'Product', price: getProductPrice(product), image_urls: product.image_urls || product.image_url }); }}
                                                     className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20 cursor-pointer"
                                                     aria-label="Ajouter au panier"
                                                 >
@@ -665,20 +717,20 @@ const Products = () => {
                                                 )}
                                             </div>
                                             
-                                            {product.promo_price ? (
+                                            {product.hasScheduledPromo ? (
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="text-sm text-red-400 line-through">
                                                         ${product.price?.toFixed(2) || '0.00'}
                                                     </span>
                                                     <span className="text-base font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
-                                                        ${product.promo_price.toFixed(2)}
+                                                        ${getProductPrice(product).toFixed(2)}
                                                     </span>
                                                 </div>
                                             ) : (
 
                                                 <div className="flex items-center justify-center">
                                                 <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                                    ${product.price?.toFixed(2) || '0.00'}
+                                                    ${getProductPrice(product).toFixed(2) || '0.00'}
                                                 </span>
                                             </div>
                                             )}
@@ -709,7 +761,7 @@ const Products = () => {
                                 
                                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center shadow-lg">
                                     <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-                                        ${Math.min(...filteredProducts.map(p => p.price || 0)).toFixed(2)}
+                                        ${Math.min(...filteredProducts.map(p => getProductPrice(p))).toFixed(2)}
                                     </div>
                                     <div className="text-white/70 font-medium">Starting From</div>
                                 </div>

@@ -5,6 +5,7 @@ import { supabase, insertNewFavorite, deleteFavorite,
      getAppreciationsByProductId, getUserNameById, deleteAppreciation
     , calculateAverageRating } from "../services/supabaseClient";
 import { useCart } from "../contexts/CartContext";
+import { fetchScheduledPromosForProducts, getScheduledPromoPricing } from "../services/promoCodes";
 
 
 interface Product {
@@ -16,7 +17,9 @@ interface Product {
     image_urls?: string;
     created_at: string;
     user_id: string;
-    promo_price?: number | null;
+    displayPrice?: number;
+    promoBadge?: string | null;
+    hasScheduledPromo?: boolean;
 }
 
 interface Appreciation {
@@ -72,16 +75,24 @@ const ProductDetails: React.FC = () => {
                     .eq('id', productId)
                     .single();
                 if (error) throw error;
-                setProduct(data);
+                const promoMap = await fetchScheduledPromosForProducts([data.id]);
+                const pricing = getScheduledPromoPricing(Number(data.price || 0), promoMap[data.id] || []);
+
+                setProduct({
+                    ...data,
+                    displayPrice: pricing.displayPrice,
+                    promoBadge: pricing.badgeText,
+                    hasScheduledPromo: pricing.hasScheduledPromo,
+                });
 
                 setAppreciations(await getAppreciationsByProductId(productId!));
 
 
                 const favorites = await getFavoritesByUserId(await getUserId());
 
-                const userId = await getUserId();
+                const currentUserId = await getUserId();
 
-                setUserId(userId);
+                setUserId((currentUserId ?? "") as string);
 
 
                 if (favorites.some(fav => fav.product_id === productId)) {
@@ -125,7 +136,16 @@ const ProductDetails: React.FC = () => {
                     filter: `product_id=eq.${productId}`
                 },
                 (payload) => {
-                    setAppreciations(prev => [...prev, payload.new]);
+                    const newAppreciation: Appreciation = {
+                        id: String(payload.new.id),
+                        product_id: String(payload.new.product_id),
+                        user_id: String(payload.new.user_id),
+                        note: Number(payload.new.note),
+                        comment: payload.new.comment ? String(payload.new.comment) : undefined,
+                        created_at: String(payload.new.created_at),
+                    };
+
+                    setAppreciations(prev => [...prev, newAppreciation]);
                 }
             )
             .subscribe(() => {
@@ -162,7 +182,7 @@ const ProductDetails: React.FC = () => {
             });
 
             const me = await getUserId();
-            if (usernamesMap[me]) {
+            if (typeof me === 'string' && usernamesMap[me]) {
                 setAlreadyAppreciated(true);
             }
             setUsernames(prev => ({ ...prev, ...usernamesMap }));
@@ -541,7 +561,7 @@ const ProductDetails: React.FC = () => {
                                 </svg>
                             </button>
                             <button
-                                onClick={() => addItem({ id: product.id, title: product.title, price: product.price, image_urls: product.image_urls })}
+                                onClick={() => addItem({ id: product.id, title: product.title, price: product.displayPrice ?? product.price, image_urls: product.image_urls })}
                                 className="px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-[#0f172a] font-bold shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] transition-all"
                             >
                                 Add to cart
@@ -580,20 +600,28 @@ const ProductDetails: React.FC = () => {
                             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8 leading-tight">
                                 {product.title}
                             </h1>
-                            {product.promo_price ? (
+                            {product.hasScheduledPromo ? (
+                                <div className="space-y-4">
+                                    {product.promoBadge && (
+                                        <div className="inline-flex items-center gap-2.5 rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 px-4 py-2.5 backdrop-blur-sm shadow-lg shadow-emerald-600/20">
+                                            <svg className="w-4 h-4 text-emerald-300 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M13 6a1 1 0 11-2 0 1 1 0 012 0zM13 12a1 1 0 11-2 0 1 1 0 012 0zM13 18a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                                            <span className="text-sm font-bold bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">{product.promoBadge}</span>
+                                        </div>
+                                    )}
                                 <div className="flex items-center gap-2">
                                     <span className="text-4xl text-red-400 line-through">
                                         ${product.price?.toFixed(2) || '0.00'}
                                     </span>
                                     <span className="text-4xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
-                                        ${product.promo_price.toFixed(2)}
+                                        ${(product.displayPrice ?? product.price).toFixed(2)}
                                     </span>
+                                </div>
                                 </div>
                             ) : (
                                 <div className="flex items-center">
                                     <div className="flex items-baseline gap-4">
                                         <span className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                            {product.price?.toLocaleString()} $
+                                            {(product.displayPrice ?? product.price)?.toLocaleString()} $
                                         </span>
 
                                     </div>

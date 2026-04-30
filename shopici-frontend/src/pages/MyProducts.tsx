@@ -1,8 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import ProductCreationForm  from "../components/ProductCreationForm";
-import { normalizePromoCode } from "../services/promoCodes";
+import { attachScheduledPromosToProducts, isPromoCurrentlyActive, normalizePromoCode, toPromoRecord } from "../services/promoCodes";
+
+interface SellerPromotion {
+    id: string;
+    code?: string | null;
+    title?: string | null;
+    type: 'percentage' | 'fixed';
+    value: number;
+    product_id?: string | null;
+    promo_mode: 'code' | 'scheduled';
+    is_active: boolean;
+    start_date?: string | null;
+    end_date?: string | null;
+    created_at?: string | null;
+}
+
+type PromoTab = 'code' | 'scheduled';
+type Toast = { id: number; type: 'success' | 'error'; message: string };
 
 const MyProducts = () => {
     const [products, setProducts] = useState<Array<any>>([]);
@@ -11,16 +28,49 @@ const MyProducts = () => {
     const [isForUpdate, setIsForUpdate] = useState(false);
     const [product, setProduct] = useState<any>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [promoForm, setPromoForm] = useState({
+    const [activePromoTab, setActivePromoTab] = useState<PromoTab>('code');
+    const [promoCodeForm, setPromoCodeForm] = useState({
         code: '',
         type: 'percentage' as 'percentage' | 'fixed',
         value: '',
         productId: '',
     });
-    const [promoFeedback, setPromoFeedback] = useState<string | null>(null);
+    const [scheduledPromoForm, setScheduledPromoForm] = useState({
+        title: '',
+        type: 'percentage' as 'percentage' | 'fixed',
+        value: '',
+        productId: '',
+        startDate: '',
+        endDate: '',
+    });
     const [promoError, setPromoError] = useState<string | null>(null);
-    const [isCreatingPromo, setIsCreatingPromo] = useState(false);
+    const [isCreatingPromoCode, setIsCreatingPromoCode] = useState(false);
+    const [isCreatingScheduledPromo, setIsCreatingScheduledPromo] = useState(false);
+    const [promotions, setPromotions] = useState<SellerPromotion[]>([]);
+    const [toasts, setToasts] = useState<Toast[]>([]);
+    const toastCounter = useRef(0);
     const navigate = useNavigate();
+
+    const addToast = (type: 'success' | 'error', message: string) => {
+        const id = ++toastCounter.current;
+        setToasts(prev => [...prev, { id, type, message }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+    };
+
+    const loadSellerPromotions = async (userId: string) => {
+        const { data, error } = await supabase
+            .from('promo')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching promotions:", error);
+            return;
+        }
+
+        setPromotions((data || []).map((item) => toPromoRecord(item)));
+    };
 
 
     const checkAuthAndLoadProducts = async () => {
@@ -41,8 +91,11 @@ const MyProducts = () => {
             if (error) {
                 console.error("Error fetching products:", error);
             } else {
-                setProducts(productsData || []);
+                const productsWithPromotions = await attachScheduledPromosToProducts(productsData || []);
+                setProducts(productsWithPromotions);
             }
+
+            await loadSellerPromotions(userId);
         } catch (error) {
             console.error("Error during authentication check and product loading:", error);
         }
@@ -138,10 +191,23 @@ const MyProducts = () => {
         setShowCreateForm(false);
     };
 
+    const handleDeletePromo = async (promoId: string) => {
+        const { error } = await supabase.from('promo').delete().eq('id', promoId);
+        if (error) { addToast('error', 'Failed to delete promotion.'); return; }
+        setPromotions(prev => prev.filter(p => p.id !== promoId));
+        addToast('success', 'Promotion deleted.');
+    };
+
+    const handleTogglePromo = async (promo: SellerPromotion) => {
+        const { error } = await supabase.from('promo').update({ is_active: !promo.is_active }).eq('id', promo.id);
+        if (error) { addToast('error', 'Failed to update promotion.'); return; }
+        setPromotions(prev => prev.map(p => p.id === promo.id ? { ...p, is_active: !p.is_active } : p));
+        addToast('success', promo.is_active ? 'Promotion disabled.' : 'Promotion enabled.');
+    };
+
     const handleCreatePromoCode = async () => {
         setPromoError(null);
-        setPromoFeedback(null);
-        setIsCreatingPromo(false);
+        setIsCreatingPromoCode(false);
 
         const { data: { session } } = await supabase.auth.getSession();
 
@@ -154,15 +220,15 @@ const MyProducts = () => {
         const currentUserId = session.user.id;
         setCurrentUserId(currentUserId);
 
-        const normalizedCode = normalizePromoCode(promoForm.code);
-        const parsedValue = Number(promoForm.value);
+        const normalizedCode = normalizePromoCode(promoCodeForm.code);
+        const parsedValue = Number(promoCodeForm.value);
 
         if (!normalizedCode) {
             setPromoError('Promo code is required.');
             return;
         }
 
-        if (!promoForm.type) {
+        if (!promoCodeForm.type) {
             setPromoError('Select a discount type.');
             return;
         }
@@ -172,17 +238,17 @@ const MyProducts = () => {
             return;
         }
 
-        if (promoForm.type === 'percentage' && parsedValue > 100) {
+        if (promoCodeForm.type === 'percentage' && parsedValue > 100) {
             setPromoError('Percentage cannot exceed 100.');
             return;
         }
 
-        if (!promoForm.productId) {
+        if (!promoCodeForm.productId) {
             setPromoError('Select one of your products for this promo code.');
             return;
         }
 
-        const ownedProduct = products.find((item) => item.id === promoForm.productId && item.user_id === currentUserId);
+        const ownedProduct = products.find((item) => item.id === promoCodeForm.productId && item.user_id === currentUserId);
 
         if (!ownedProduct) {
             setPromoError('You can only create promo codes for your own products.');
@@ -191,20 +257,26 @@ const MyProducts = () => {
 
         const promoPayload = {
             code: normalizedCode,
-            type: promoForm.type,
+            type: promoCodeForm.type,
             value: parsedValue,
-            product_id: promoForm.productId,
+            product_id: promoCodeForm.productId,
             user_id: currentUserId,
             is_active: true,
+            promo_mode: 'code',
+            start_date: null,
+            end_date: null,
+            title: null,
         };
 
-        setIsCreatingPromo(true);
+        setIsCreatingPromoCode(true);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('promo')
-            .insert([promoPayload]);
+            .insert([promoPayload])
+            .select()
+            .single();
 
-        setIsCreatingPromo(false);
+        setIsCreatingPromoCode(false);
 
         if (error) {
             const message = error.message?.toLowerCase() || '';
@@ -223,382 +295,603 @@ const MyProducts = () => {
             return;
         }
 
-        setPromoFeedback(`Promo code ${normalizedCode} created successfully.`);
-        setPromoForm({
-            code: '',
-            type: 'percentage',
-            value: '',
-            productId: '',
-        });
+        addToast('success', `Promo code ${normalizedCode} created successfully.`);
+        if (data) {
+            setPromotions((prev) => [toPromoRecord(data), ...prev]);
+        }
+        setPromoCodeForm({ code: '', type: 'percentage', value: '', productId: '' });
     };
 
+    const handleCreateScheduledPromo = async () => {
+        setPromoError(null);
+        setIsCreatingScheduledPromo(false);
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.user) {
+            setPromoError('You must be logged in to create scheduled promotions.');
+            navigate('/login');
+            return;
+        }
+
+        const sellerId = session.user.id;
+        const parsedValue = Number(scheduledPromoForm.value);
+
+        if (!scheduledPromoForm.title.trim()) {
+            setPromoError('Promotion title is required.');
+            return;
+        }
+
+        if (!scheduledPromoForm.type) {
+            setPromoError('Select a discount type.');
+            return;
+        }
+
+        if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+            setPromoError('Promo value must be greater than 0.');
+            return;
+        }
+
+        if (scheduledPromoForm.type === 'percentage' && parsedValue > 100) {
+            setPromoError('Percentage cannot exceed 100.');
+            return;
+        }
+
+        if (!scheduledPromoForm.productId) {
+            setPromoError('Select one of your products for this scheduled promotion.');
+            return;
+        }
+
+        if (!scheduledPromoForm.startDate || !scheduledPromoForm.endDate) {
+            setPromoError('Start date and end date are required.');
+            return;
+        }
+
+        if (new Date(scheduledPromoForm.startDate).getTime() > new Date(scheduledPromoForm.endDate).getTime()) {
+            setPromoError('Start date must be before end date.');
+            return;
+        }
+
+        const ownedProduct = products.find((item) => item.id === scheduledPromoForm.productId && item.user_id === sellerId);
+
+        if (!ownedProduct) {
+            setPromoError('You can only create scheduled promotions for your own products.');
+            return;
+        }
+
+        const promoPayload = {
+            code: null,
+            title: scheduledPromoForm.title.trim(),
+            type: scheduledPromoForm.type,
+            value: parsedValue,
+            product_id: scheduledPromoForm.productId,
+            user_id: sellerId,
+            is_active: true,
+            promo_mode: 'scheduled',
+            start_date: scheduledPromoForm.startDate,
+            end_date: scheduledPromoForm.endDate,
+        };
+
+        setIsCreatingScheduledPromo(true);
+
+        const { data, error } = await supabase
+            .from('promo')
+            .insert([promoPayload])
+            .select()
+            .single();
+
+        setIsCreatingScheduledPromo(false);
+
+        if (error) {
+            const message = error.message?.toLowerCase() || '';
+
+            if (message.includes('row-level security') || message.includes('unauthorized promo creation')) {
+                setPromoError('You can only create promotions for your own products.');
+                return;
+            }
+
+            setPromoError(error.message || 'Failed to create scheduled promotion.');
+            return;
+        }
+
+        addToast('success', `Scheduled promotion "${scheduledPromoForm.title.trim()}" created successfully.`);
+        if (data) {
+            setPromotions((prev) => [toPromoRecord(data), ...prev]);
+        }
+        setScheduledPromoForm({ title: '', type: 'percentage', value: '', productId: '', startDate: '', endDate: '' });
+        await checkAuthAndLoadProducts();
+    };
+
+    const getProductName = (productId?: string | null) => {
+        const p = products.find((item) => item.id === productId);
+        return p?.title || p?.name || 'Unlinked product';
+    };
+
+    const getProductImage = (productId?: string | null) => {
+        const p = products.find((item) => item.id === productId);
+        return p?.image_urls || null;
+    };
+
+    const getPromoStatus = (promo: SellerPromotion): 'active' | 'upcoming' | 'expired' | 'disabled' | 'code' => {
+        if (!promo.is_active) return 'disabled';
+        if (promo.promo_mode === 'code') return 'code';
+        const now = new Date();
+        if (promo.start_date && new Date(promo.start_date) > now) return 'upcoming';
+        if (promo.end_date && new Date(promo.end_date) < now) return 'expired';
+        return 'active';
+    };
+
+    const statusConfig: Record<string, { label: string; dot: string; badge: string }> = {
+        active:   { label: 'Active',    dot: 'bg-emerald-400',  badge: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300' },
+        code:     { label: 'Active',    dot: 'bg-emerald-400',  badge: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300' },
+        upcoming: { label: 'Upcoming',  dot: 'bg-amber-400',    badge: 'border-amber-400/40 bg-amber-500/15 text-amber-300' },
+        expired:  { label: 'Expired',   dot: 'bg-slate-500',    badge: 'border-slate-500/40 bg-slate-500/10 text-slate-400' },
+        disabled: { label: 'Disabled',  dot: 'bg-slate-500',    badge: 'border-slate-500/40 bg-slate-500/10 text-slate-400' },
+    };
+
+    const now = new Date();
+    const activePromos   = promotions.filter(p => p.is_active && (p.promo_mode === 'code' || isPromoCurrentlyActive(p, now)));
+    const upcomingPromos = promotions.filter(p => p.is_active && p.promo_mode === 'scheduled' && p.start_date && new Date(p.start_date) > now);
+    const discountedProducts = products.filter(p => p.hasScheduledPromo);
+
+    const inputCls = "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/8 transition-all duration-200";
+    const selectCls = inputCls + " appearance-none cursor-pointer";
+
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-200">
-           
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute top-1/2 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
-                <div className="absolute bottom-10 left-1/3 w-80 h-80 bg-accent/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="min-h-screen bg-[#0a0f1e] text-slate-200">
+            {/* Background glows */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/8 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-600/8 rounded-full blur-3xl"></div>
             </div>
 
-          
-            <div className="relative z-10 py-8">
-                
-                <div className="w-full px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                        <div>
-                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 bg-gradient-to-r from-white via-cyan-200 to-blue-300 bg-clip-text text-transparent drop-shadow-2xl relative">
-                                My Products
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-cyan-200/5 to-blue-300/5 blur-2xl -z-10"></div>
-                            </h1>
-                            <p className="text-xl text-white/90 leading-relaxed font-light">
-                                Manage your products and add new <span className="font-semibold text-cyan-300">listings</span>
-                            </p>
-                        </div>
-                        
-                        <button
-                            onClick={() => {
-                                handleCreateProduct();
-                                setIsForUpdate(false);
-                            }}
-                            className="btn-gradient text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            {/* Toast notifications */}
+            <div className="fixed top-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+                {toasts.map(t => (
+                    <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-sm font-medium animate-slide-up transition-all ${t.type === 'success' ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-200' : 'bg-red-500/15 border-red-400/30 text-red-200'}`}>
+                        {t.type === 'success'
+                            ? <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            : <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        }
+                        {t.message}
+                    </div>
+                ))}
+            </div>
+
+            <div className="relative z-10 max-w-[1200px] mx-auto px-4 sm:px-6 pt-24 pb-12">
+
+                {/* ─── Page header ─── */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-7">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                            Seller Dashboard
+                        </h1>
+                        <p className="mt-0.5 text-xs text-white/50">Manage your listings, promotions, and analytics.</p>
+                    </div>
+                    <button
+                        onClick={() => { handleCreateProduct(); setIsForUpdate(false); }}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:from-indigo-400 hover:to-purple-400 transition-all duration-200"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                        New Product
+                    </button>
+                </div>
+
+                {/* ─── Top stat strip ─── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    {[
+                        { label: 'Total Products',       value: products.length,           icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: 'text-indigo-300', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                        { label: 'Active Listings',      value: products.filter(p=>p.status==='active').length, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                        { label: 'Active Promotions',    value: activePromos.length,       icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z', color: 'text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20' },
+                        { label: 'On Promotion',         value: discountedProducts.length, icon: 'M13 10V3L4 14h7v7l9-11h-7z', color: 'text-purple-300', bg: 'bg-purple-500/10 border-purple-500/20' },
+                    ].map(s => (
+                        <div key={s.label} className={`rounded-xl border p-3.5 ${s.bg} backdrop-blur-sm`}>
+                            <svg className={`w-4 h-4 mb-2 ${s.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon} />
                             </svg>
-                            Add product
-                        </button>
-                    </div>
+                            <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+                            <div className="text-[11px] text-white/40 mt-0.5">{s.label}</div>
+                        </div>
+                    ))}
+                </div>
 
-                    <div className="mb-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 sm:p-7">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-white mb-2">Create Promo Code</h2>
-                            <p className="text-white/70 text-sm">
-                                Create product-specific promo codes stored in the promo table. You can only attach codes to products you own.
-                            </p>
+                {/* ─── Main 2-column layout ─── */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
+
+                    {/* Left: tabbed form card (3 cols) */}
+                    <div className="lg:col-span-3 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+                        {/* Card header */}
+                        <div className="px-5 pt-5 pb-3 border-b border-white/8">
+                            <h2 className="text-sm font-semibold text-white">Create Promotion</h2>
+                            <p className="text-xs text-white/40 mt-0.5">Both types are stored in a single promo table.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <div className="rounded-2xl border border-white/15 bg-white/5 p-5 space-y-4">
-                                <div>
-                                    <p className="text-sm font-semibold text-cyan-300 mb-1">1️⃣ Discount details</p>
-                                    <p className="text-xs text-white/55">Choose the code, discount type, and value.</p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <input
-                                        type="text"
-                                        value={promoForm.code}
-                                        onChange={(e) => setPromoForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                                        placeholder="Enter promo code (e.g. SAVE10)"
-                                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
-                                    />
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <select
-                                            value={promoForm.type}
-                                            onChange={(e) => setPromoForm(prev => ({ ...prev, type: e.target.value as 'percentage' | 'fixed' }))}
-                                            className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-cyan-400"
-                                        >
-                                            <option className="bg-zinc-900" value="percentage">Percentage discount</option>
-                                            <option className="bg-zinc-900" value="fixed">Fixed amount (€)</option>
-                                        </select>
-
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={promoForm.value}
-                                            onChange={(e) => setPromoForm(prev => ({ ...prev, value: e.target.value }))}
-                                            placeholder="Discount value"
-                                            className="px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:border-cyan-400"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-white/15 bg-white/5 p-5 space-y-4">
-                                <div>
-                                    <p className="text-sm font-semibold text-cyan-300 mb-1">2️⃣ Choose your product</p>
-                                    <p className="text-xs text-white/55">Only your own products are shown. Select one product to attach the promo code.</p>
-                                </div>
-
-                                {products.length === 0 ? (
-                                    <div className="rounded-xl border border-dashed border-white/15 bg-black/10 p-4 text-sm text-white/60">
-                                        Create a product first before creating a promo code.
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
-                                        {products.map((item) => {
-                                            const isSelected = promoForm.productId === item.id;
-
-                                            return (
-                                                <button
-                                                    key={item.id}
-                                                    type="button"
-                                                    onClick={() => setPromoForm(prev => ({ ...prev, productId: item.id }))}
-                                                    className={`w-full text-left rounded-xl border p-3 transition flex items-center gap-3 ${isSelected
-                                                        ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]'
-                                                        : 'border-white/15 bg-white/5 hover:bg-white/10'
-                                                        }`}
-                                                >
-                                                    <img
-                                                        src={item.image_urls || '/placeholder-image.jpg'}
-                                                        alt={item.title || item.name || 'Product'}
-                                                        className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-                                                    />
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-sm font-semibold text-white truncate">
-                                                            {item.title || item.name || 'Unnamed Product'}
-                                                        </p>
-                                                        <p className="text-xs text-white/55 truncate mt-1">
-                                                            {(item.price || 0).toFixed(2)} €
-                                                        </p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div className="text-sm text-white/55">
-                                {currentUserId ? 'Promo codes are created from your authenticated seller account.' : 'Log in to create promo codes.'}
-                            </div>
-
-                            <button
-                                onClick={handleCreatePromoCode}
-                                disabled={isCreatingPromo || products.length === 0}
-                                className="btn-gradient text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                {isCreatingPromo ? 'Creating...' : 'Create Code'}
-                            </button>
-                        </div>
-
-                        {promoError && (
-                            <p className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
-                                {promoError}
-                            </p>
-                        )}
-                        {promoFeedback && (
-                            <p className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-emerald-200 text-sm">
-                                {promoFeedback}
-                            </p>
-                        )}
-                    </div>
-
-                   
-                    <div className="px-4 sm:px-6 lg:px-8">
-                        {products.length === 0 ? (
-                  
-                        <div className="flex flex-col items-center justify-center py-16 sm:py-24">
-                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 sm:p-12 shadow-2xl max-w-md w-full mx-4 text-center">
-                        
-                                <div className="relative mb-6">
-                                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/10">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                    </div>
-                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-                                        <span className="text-xs">✨</span>
-                                    </div>
-                                </div>
-
-                                <h3 className="text-2xl font-bold text-white mb-4">
-                                    You have no products for the moment
-                                </h3>
-                                
-                                <p className="text-white/70 mb-6 leading-relaxed">
-                                    Start building your store by creating your first product. 
-                                    It's <span className="text-cyan-300 font-semibold">quick and easy</span>!
-                                </p>
-
+                        {/* Tabs */}
+                        <div className="flex gap-1 px-5 pt-3">
+                            {(['code', 'scheduled'] as PromoTab[]).map(tab => (
                                 <button
-                                    onClick={() => { handleCreateProduct(); setIsForUpdate(false); }}
-                                    className="btn-gradient text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 w-full flex items-center justify-center gap-2"
+                                    key={tab}
+                                    onClick={() => { setActivePromoTab(tab); setPromoError(null); }}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activePromoTab === tab ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/5'}`}
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Add Your First Product
+                                    {tab === 'code' ? (
+                                        <span className="flex items-center gap-2">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                                            Promo Code
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            Scheduled
+                                        </span>
+                                    )}
                                 </button>
-                            </div>
-                        </div>
-                    ) : (
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                            {products.map((product) => (
-                                <div
-                                    key={product.id}
-                                    className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer hover:bg-white/15 aspect-square flex flex-col"
-                                    onClick={() => navigate(`/products/${product.id}`)}
-                                >
-                                
-                                    <div className="relative overflow-hidden h-2/3">
-                                        <img
-                                            src={product.image_urls}
-                                            alt={product.title || product.name || 'Product'}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                            
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        
-                               
-                                        <div className="absolute top-2 right-2">
-                                            <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
-                                        </div>
-
-                                
-                                        <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                      
-                                            <button 
-                                                className="p-2 hover:bg-cyan-500/50 rounded-lg text-white hover:text-cyan-300 backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setShowCreateForm(true);
-                                                    setIsForUpdate(true);
-                                                    setProduct(product);
-                                                }}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                            
-                                           
-                                            <button 
-                                                className="p-2 hover:bg-red-500/50 hover:text-red-300 rounded-lg text-white backdrop-blur-md bg-black/50 shadow-lg border border-white/20"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteProductFromDatabase(product.id).then((success) => {
-                                                        if (success) {
-                                                            setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
-                                                        }
-                                                    });
-                                                }}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                  
-                                    <div className="p-3 h-1/3 flex flex-col justify-between bg-gradient-to-t from-black/20 to-transparent">
-                                        <div>
-                                            <h2 className="text-sm font-semibold text-white mb-1 line-clamp-1 group-hover:text-cyan-300 transition-colors duration-300">
-                                                {product.title || product.name || 'Unnamed Product'}
-                                            </h2>
-                                            
-                                           
-                                            {product.description && (
-                                                <p className="text-xs text-white/70 mb-1 line-clamp-1">
-                                                    {product.description}
-                                                </p>
-                                            )}
-                                            
-                                   
-                                            {product.category && (
-                                                <span className="inline-block text-xs bg-cyan-500/20 text-cyan-300 px-1 py-0.5 rounded text-center mb-1">
-                                                    {product.category}
-                                                </span>
-                                            )}
-                                            
-
-                                            {product.created_at && (
-                                                <span className="inline-block text-xs bg-white/10 text-white/70 px-1 py-0.5 rounded text-center mb-1 float-right whitespace-nowrap">
-                                                    Added on {new Date(product.created_at).toLocaleDateString()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        
-                                        {product.promo_price ? (
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <span className="text-sm text-red-400 line-through">
-                                                        ${product.price?.toFixed(2) || '0.00'}
-                                                    </span>
-                                                    <span className="text-base font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
-                                                        ${product.promo_price.toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            ) : (
-
-                                                <div className="flex items-center justify-center">
-                                                <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                                    ${product.price?.toFixed(2) || '0.00'}
-                                                </span>
-                                            </div>
-                                            )}
-                                    </div>
-                                </div>
                             ))}
                         </div>
-                    )}
 
-            
-                    {products.length > 0 && (
-                        <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center shadow-lg">
-                                <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">{products.length}</div>
-                                <div className="text-white/70 font-medium">Total Products</div>
-                            </div>
-                            
-                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center shadow-lg">
-                                <div className="text-3xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent mb-2">
-                                    {products.filter(p => p.status === 'active').length}
+                        {/* Form body */}
+                        <div className="px-5 pb-5 pt-3 space-y-3">
+                            {activePromoTab === 'code' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-medium text-white/50 mb-1.5">Promo Code</label>
+                                        <input type="text" value={promoCodeForm.code} onChange={e => setPromoCodeForm(p => ({ ...p, code: e.target.value.toUpperCase() }))} placeholder="e.g. SAVE20" className={inputCls} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">Discount Type</label>
+                                            <select value={promoCodeForm.type} onChange={e => setPromoCodeForm(p => ({ ...p, type: e.target.value as 'percentage'|'fixed' }))} className={selectCls}>
+                                                <option className="bg-[#0f172a]" value="percentage">Percentage (%)</option>
+                                                <option className="bg-[#0f172a]" value="fixed">Fixed (€)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">Value</label>
+                                            <input type="number" min="0" step="0.01" value={promoCodeForm.value} onChange={e => setPromoCodeForm(p => ({ ...p, value: e.target.value }))} placeholder={promoCodeForm.type === 'percentage' ? '20' : '10.00'} className={inputCls} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-white/50 mb-1.5">Linked Product</label>
+                                        <select value={promoCodeForm.productId} onChange={e => setPromoCodeForm(p => ({ ...p, productId: e.target.value }))} className={selectCls}>
+                                            <option className="bg-[#0f172a]" value="">Select a product…</option>
+                                            {products.map(item => <option key={item.id} className="bg-[#0f172a]" value={item.id}>{item.title || item.name || 'Unnamed'}</option>)}
+                                        </select>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-medium text-white/50 mb-1.5">Promotion Title</label>
+                                        <input type="text" value={scheduledPromoForm.title} onChange={e => setScheduledPromoForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Summer Sale" className={inputCls} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">Discount Type</label>
+                                            <select value={scheduledPromoForm.type} onChange={e => setScheduledPromoForm(p => ({ ...p, type: e.target.value as 'percentage'|'fixed' }))} className={selectCls}>
+                                                <option className="bg-[#0f172a]" value="percentage">Percentage (%)</option>
+                                                <option className="bg-[#0f172a]" value="fixed">Fixed (€)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">Value</label>
+                                            <input type="number" min="0" step="0.01" value={scheduledPromoForm.value} onChange={e => setScheduledPromoForm(p => ({ ...p, value: e.target.value }))} placeholder={scheduledPromoForm.type === 'percentage' ? '20' : '10.00'} className={inputCls} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-white/50 mb-1.5">Linked Product</label>
+                                        <select value={scheduledPromoForm.productId} onChange={e => setScheduledPromoForm(p => ({ ...p, productId: e.target.value }))} className={selectCls}>
+                                            <option className="bg-[#0f172a]" value="">Select a product…</option>
+                                            {products.map(item => <option key={item.id} className="bg-[#0f172a]" value={item.id}>{item.title || item.name || 'Unnamed'}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">
+                                                <svg className="w-3 h-3 inline mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                Start Date
+                                            </label>
+                                            <input type="date" value={scheduledPromoForm.startDate} onChange={e => setScheduledPromoForm(p => ({ ...p, startDate: e.target.value }))} className={inputCls + " [color-scheme:dark]"} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-white/50 mb-1.5">
+                                                <svg className="w-3 h-3 inline mr-1 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                End Date
+                                            </label>
+                                            <input type="date" value={scheduledPromoForm.endDate} onChange={e => setScheduledPromoForm(p => ({ ...p, endDate: e.target.value }))} className={inputCls + " [color-scheme:dark]"} />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {promoError && (
+                                <div className="flex items-center gap-2.5 rounded-xl border border-red-400/25 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300">
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    {promoError}
                                 </div>
-                                <div className="text-white/70 font-medium">Active Listings</div>
-                            </div>
-                            
-                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-center shadow-lg">
-                                <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-                                    ${products.reduce((sum, p) => sum + p.price, 0).toFixed(2)}
-                                </div>
-                                <div className="text-white/70 font-medium">Total Value</div>
+                            )}
+
+                            <button
+                                onClick={activePromoTab === 'code' ? handleCreatePromoCode : handleCreateScheduledPromo}
+                                disabled={(activePromoTab === 'code' ? isCreatingPromoCode : isCreatingScheduledPromo) || products.length === 0}
+                                className="w-full py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/35 hover:from-indigo-400 hover:to-purple-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                            >
+                                {activePromoTab === 'code'
+                                    ? (isCreatingPromoCode ? 'Creating…' : 'Create Promo Code')
+                                    : (isCreatingScheduledPromo ? 'Creating…' : 'Create Scheduled Promotion')
+                                }
+                            </button>
+                            {products.length === 0 && (
+                                <p className="text-center text-xs text-white/30">Add a product first to create promotions.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right: info widgets (2 cols) */}
+                    <div className="lg:col-span-2 flex flex-col gap-4">
+
+                        {/* Quick stats */}
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                            <h3 className="text-xs font-semibold text-white mb-3">Promotion Overview</h3>
+                            <div className="space-y-3">
+                                {[
+                                    { label: 'Active now',   value: activePromos.length,   color: 'text-emerald-300', barColor: 'bg-emerald-500' },
+                                    { label: 'Upcoming',     value: upcomingPromos.length, color: 'text-amber-300',   barColor: 'bg-amber-500' },
+                                    { label: 'Total created', value: promotions.length,    color: 'text-indigo-300',  barColor: 'bg-indigo-500' },
+                                ].map(row => (
+                                    <div key={row.label} className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-xs text-white/50">{row.label}</span>
+                                                <span className={`text-xs font-bold ${row.color}`}>{row.value}</span>
+                                            </div>
+                                            <div className="h-1.5 rounded-full bg-white/5">
+                                                <div className={`h-full rounded-full ${row.barColor}/70 transition-all`} style={{ width: promotions.length > 0 ? `${Math.min(100, (row.value / promotions.length) * 100)}%` : '0%' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
+
+                        {/* Tips */}
+                        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex-1">
+                            <div className="flex items-center gap-2 mb-3">
+                                <svg className="w-4 h-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                <span className="text-sm font-semibold text-indigo-200">Quick Tips</span>
+                            </div>
+                            <ul className="space-y-2.5 text-xs text-white/50">
+                                <li className="flex items-start gap-2"><span className="text-indigo-400 font-bold mt-0.5">→</span>Promo codes are entered manually by shoppers at checkout.</li>
+                                <li className="flex items-start gap-2"><span className="text-indigo-400 font-bold mt-0.5">→</span>Scheduled promos apply discounts automatically based on dates.</li>
+                                <li className="flex items-start gap-2"><span className="text-indigo-400 font-bold mt-0.5">→</span>Disable a promotion without deleting it to reuse later.</li>
+                                <li className="flex items-start gap-2"><span className="text-indigo-400 font-bold mt-0.5">→</span>Percentage discounts are calculated on the original price.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
+
+                {/* ─── Promotions list ─── */}
+                <section className="mb-10">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-white">Your Promotions</h2>
+                            <p className="text-[11px] text-white/40 mt-0.5">{promotions.length} total · all stored in the same promo table</p>
+                        </div>
+                    </div>
+
+                    {promotions.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
+                            <svg className="w-10 h-10 mx-auto mb-3 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            <p className="text-sm text-white/30">No promotions created yet.</p>
+                            <p className="text-xs text-white/20 mt-1">Use the form above to create your first promotion.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {promotions.map(promo => {
+                                const status = getPromoStatus(promo);
+                                const cfg = statusConfig[status];
+                                const valueLabel = promo.type === 'percentage' ? `${promo.value}% OFF` : `${promo.value.toFixed(2)} € OFF`;
+                                const productImg = getProductImage(promo.product_id);
+
+                                return (
+                                    <div key={promo.id} className="group rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-4 flex flex-col gap-2.5 hover:border-white/20 hover:bg-white/[0.05] transition-all duration-200">
+                                        {/* Top row: icon + name + status */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                {productImg ? (
+                                                    <img src={productImg} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-white/10" />
+                                                ) : (
+                                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${promo.promo_mode === 'code' ? 'bg-indigo-500/15 border border-indigo-500/25' : 'bg-amber-500/15 border border-amber-500/25'}`}>
+                                                        {promo.promo_mode === 'code'
+                                                            ? <svg className="w-4 h-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                                                            : <svg className="w-4 h-4 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        }
+                                                    </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-white truncate leading-tight">
+                                                        {promo.promo_mode === 'code' ? (promo.code || '—') : (promo.title || '—')}
+                                                    </p>
+                                                    <p className="text-[11px] text-white/35 truncate">
+                                                        {promo.promo_mode === 'code' ? 'Promo Code' : 'Scheduled'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${cfg.badge}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
+                                                {cfg.label}
+                                            </span>
+                                        </div>
+
+                                        {/* Discount value */}
+                                        <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2 flex items-center justify-between">
+                                            <span className="text-lg font-bold text-white">{valueLabel}</span>
+                                            <span className="text-[11px] text-white/35">{promo.type === 'percentage' ? 'percent' : 'fixed'}</span>
+                                        </div>
+
+                                        {/* Meta */}
+                                        <div className="space-y-1">
+                                            <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                                {getProductName(promo.product_id)}
+                                            </p>
+                                            {promo.promo_mode === 'scheduled' && (promo.start_date || promo.end_date) && (
+                                                <p className="text-[11px] text-white/40 flex items-center gap-1.5">
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                    {promo.start_date || '?'} → {promo.end_date || '?'}
+                                                </p>
+                                            )}
+                                            {promo.created_at && (
+                                                <p className="text-[11px] text-white/25">Created {new Date(promo.created_at).toLocaleDateString()}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-2 pt-1 border-t border-white/8">
+                                            <button
+                                                onClick={() => handleTogglePromo(promo)}
+                                                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${promo.is_active ? 'border border-white/10 text-white/50 hover:bg-white/5 hover:text-white/80' : 'border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}
+                                            >
+                                                {promo.is_active ? 'Disable' : 'Enable'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeletePromo(promo.id)}
+                                                className="p-1.5 rounded-lg border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/40 transition-all"
+                                                aria-label="Delete promotion"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
+
+                {/* ─── Products section ─── */}
+                <section>
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-white">Products Eligible for Promotions</h2>
+                            <p className="text-[11px] text-white/40 mt-0.5">{products.length} product{products.length !== 1 ? 's' : ''} · hover to edit or delete</p>
+                        </div>
+                    </div>
+
+                    {products.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-16 flex flex-col items-center text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-white/10 flex items-center justify-center mb-4">
+                                <svg className="w-8 h-8 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                            </div>
+                            <p className="text-sm text-white/30 mb-4">No products yet. Add your first listing.</p>
+                            <button onClick={() => { handleCreateProduct(); setIsForUpdate(false); }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold hover:from-indigo-400 hover:to-purple-400 transition-all">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                Add First Product
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            {products.map(prod => {
+                                const activePromo = promotions.find(pr => pr.product_id === prod.id && pr.is_active && (pr.promo_mode === 'code' || isPromoCurrentlyActive(pr, now)));
+                                return (
+                                    <div
+                                        key={prod.id}
+                                        className="group relative rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden hover:border-white/20 hover:bg-white/[0.06] transition-all duration-200 cursor-pointer"
+                                        onClick={() => navigate(`/products/${prod.id}`)}
+                                    >
+                                        {/* promo badge */}
+                                        {activePromo && (
+                                            <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
+                                                {/* Title badge */}
+                                                {(activePromo.title || activePromo.promo_mode === 'code') && (
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg backdrop-blur-md bg-gradient-to-r from-slate-900/80 to-slate-800/80 border border-white/15 shadow-xl">
+                                                        <svg className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M13 6a1 1 0 11-2 0 1 1 0 012 0zM13 12a1 1 0 11-2 0 1 1 0 012 0zM13 18a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                                                        <span className="text-[10px] font-bold text-white truncate max-w-[120px]">
+                                                            {activePromo.title || 'Promo Code'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {/* Discount badge */}
+                                                <div className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500/95 to-cyan-500/95 border border-emerald-300/50 shadow-2xl shadow-emerald-600/40 backdrop-blur-md">
+                                                    <span className="text-[11px] font-black text-white drop-shadow-lg">
+                                                        {activePromo.type === 'percentage' ? `${activePromo.value}% OFF` : `${activePromo.value.toFixed(0)}€ OFF`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* image */}
+                                        <div className="relative aspect-square overflow-hidden bg-white/5">
+                                            <img
+                                                src={prod.image_urls || '/placeholder-image.jpg'}
+                                                alt={prod.title || 'Product'}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                            {/* hover actions */}
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                                                <button
+                                                    className="p-2 rounded-lg bg-white/15 backdrop-blur border border-white/20 text-white hover:bg-indigo-500/50 transition"
+                                                    onClick={e => { e.stopPropagation(); setShowCreateForm(true); setIsForUpdate(true); setProduct(prod); }}
+                                                    aria-label="Edit"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                </button>
+                                                <button
+                                                    className="p-2 rounded-lg bg-white/15 backdrop-blur border border-white/20 text-white hover:bg-red-500/50 transition"
+                                                    onClick={e => { e.stopPropagation(); deleteProductFromDatabase(prod.id).then(ok => { if (ok) setProducts(prev => prev.filter(p => p.id !== prod.id)); }); }}
+                                                    aria-label="Delete"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* info */}
+                                        <div className="p-3">
+                                            <p className="text-xs font-semibold text-white truncate">{prod.title || prod.name || 'Unnamed'}</p>
+                                            <div className="mt-1.5 flex items-center gap-1.5">
+                                                {prod.hasScheduledPromo ? (
+                                                    <>
+                                                        <span className="text-xs text-white/35 line-through">${(prod.price ?? 0).toFixed(2)}</span>
+                                                        <span className="text-xs font-bold text-emerald-400">${(prod.displayPrice ?? prod.price ?? 0).toFixed(2)}</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-white/70">${(prod.price ?? 0).toFixed(2)}</span>
+                                                )}
+                                            </div>
+                                            {prod.category && (
+                                                <span className="mt-1.5 inline-block text-[10px] bg-white/8 text-white/40 px-1.5 py-0.5 rounded-md">{prod.category}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
+
             </div>
 
-           
+            {/* ─── Create/Edit product modal ─── */}
             {showCreateForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="relative w-full max-w-2xl max-h-[90vh] overflow-auto">
-                     
                         <button
                             onClick={handleCloseForm}
-                            className="absolute top-4 right-4 z-10 btn btn-ghost btn-sm btn-circle bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-red-500/20 hover:text-red-300"
+                            className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 backdrop-blur border border-white/15 text-white hover:bg-red-500/20 hover:text-red-300 transition-all"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-
-                    
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 shadow-2xl">
-                            <h2 className="text-3xl font-bold text-white mb-6 bg-gradient-to-r from-white via-cyan-200 to-blue-300 bg-clip-text text-transparent">
-                                {!isForUpdate ? 'Create New Product' : 'Update Product'}
+                        <div className="rounded-2xl border border-white/15 bg-[#0f172a] p-6 shadow-2xl">
+                            <h2 className="text-xl font-bold text-white mb-6">
+                                {!isForUpdate ? 'New Product' : 'Edit Product'}
                             </h2>
                             {!isForUpdate ? (
-                                <ProductCreationForm
-                                    onProductCreated={handleProductCreated}
-                                    onCancel={handleCloseForm}
-                                    isForUpdate={false}
-                                    initialData={null}
-                                />
+                                <ProductCreationForm onProductCreated={handleProductCreated} onCancel={handleCloseForm} isForUpdate={false} initialData={null} />
                             ) : (
-                                <ProductCreationForm 
+                                <ProductCreationForm
                                     onProductCreated={async (updatedProduct) => {
-                                        const savedProduct = await pushUpdatedProductToDatabase({...product, ...updatedProduct});
-                                        if (savedProduct) {
-                                            setProducts(prevProducts => prevProducts.map(p => p.id === savedProduct.id ? savedProduct : p));
-                                        }
+                                        const savedProduct = await pushUpdatedProductToDatabase({ ...product, ...updatedProduct });
+                                        if (savedProduct) setProducts(prev => prev.map(p => p.id === savedProduct.id ? savedProduct : p));
                                         setShowCreateForm(false);
                                     }}
                                     onCancel={handleCloseForm}
