@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { buildPromoPreview, findPromoCode, normalizePromoCode, validatePromoForCart } from '../services/promoCodes';
+import { useStripe } from '@stripe/react-stripe-js';
+import { supabase, getUserId } from '../services/supabaseClient';
+import StripePaymentForm from '../components/StripePaymentForm';
 
 const Cart: React.FC = () => {
   const {
@@ -16,14 +19,29 @@ const Cart: React.FC = () => {
     discountAmount,
     finalTotal,
   } = useCart();
+  const stripe = useStripe();
+  const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
+
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [promoInput, setPromoInput] = useState('');
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
-  const navigate = useNavigate();
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
   const normalizedPromoInput = normalizePromoCode(promoInput);
   const isApplyDisabled = !normalizedPromoInput || promoLoading || !!appliedPromo;
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const id = await getUserId();
+      setUserId(id);
+    };
+    fetchUserId();
+  }, []);
 
   const handleApplyPromo = async () => {
     setPromoError(null);
@@ -68,16 +86,84 @@ const Cart: React.FC = () => {
     setPromoError(null);
   };
 
+  const initializePayment = async (): Promise<string | null> => {
+    if (!userId) {
+      setPaymentError('You must be logged in to checkout');
+      return null;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        setPaymentError('Authentication token missing. Please log in again.');
+        return null;
+      }
+
+      const response = await fetch(
+        'https://dmnntzkzwnhckyraayxm.supabase.co/functions/v1/create-payment-intent',
+        {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: finalTotal,
+            userId,
+            items: items.map((item) => item.id)[0],
+            appliedPromo,
+            discountAmount,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Payment failed');
+      }
+
+      setClientSecret(data.clientSecret);
+      return data.orderId;
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Payment failed');
+      return null;
+    }
+  };
+
   const handleCheckout = async () => {
+    if (!stripe) {
+      setPaymentError('Stripe is not loaded');
+      return;
+    }
+
     setPlacing(true);
-    await new Promise(r => setTimeout(r, 900));
-    const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
-    clearCart();
-    clearPromo();
-    setPromoInput('');
-    setPromoError(null);
-    setSuccess(orderId);
-    setPlacing(false);
+    setPaymentError(null);
+
+    try {
+      const orderId = await initializePayment();
+      if (!orderId) {
+        setPlacing(false);
+        return;
+      }
+
+      // Stocker l'orderId dans localStorage pour la page de confirmation
+      localStorage.setItem('pendingOrderId', orderId);
+      setShowPaymentForm(true);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Unexpected error');
+      setPlacing(false);
+    }
+  };
+
+  const handleProceedToPayment = () => {
+    if (items.length === 0) {
+      setPaymentError('Your cart is empty');
+      return;
+    }
+    setShowPaymentForm(true);
   };
 
   if (items.length === 0 && !success) {
@@ -292,13 +378,42 @@ return (
                   Clear Cart
                 </button>
 
-                <button
-                  onClick={handleCheckout}
-                  disabled={placing}
-                  className="px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-400 text-white font-semibold transition duration-200 shadow-lg shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {placing ? 'Processing...' : 'Place Order'}
-                </button>
+                {paymentError && (
+                  <p className="text-sm text-red-300 rounded-md bg-red-500/10 border border-red-400/30 px-3 py-2">
+                     {paymentError}
+                  </p>
+                )}
+
+                {!showPaymentForm ? (
+                  <button
+                    onClick={handleCheckout}
+                    className="px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-400 text-white font-semibold transition duration-200 shadow-lg shadow-indigo-600/20 cursor-pointer"
+                  >
+                    Proceed to Payment
+                  </button>
+                ) : clientSecret ? (
+                  <>
+                    <StripePaymentForm
+                      clientSecret={clientSecret}
+                      onSuccess={() => {
+                        clearCart();
+                        clearPromo();
+                        setPromoInput('');
+                        setSuccess('Payment successful');
+                        setShowPaymentForm(false);
+                      }}
+                      onBack={() => {
+                        setShowPaymentForm(false);
+                        setPaymentError(null);
+                      }}
+                      loading={placing}
+                    />
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-slate-400">Loading payment form...</p>
+                  </div>
+                )}
               </div>
             </aside>
           </div>

@@ -4,6 +4,10 @@ import './App.css'
 import NavBar from './components/NavBar.tsx'
 import Loader from './components/Loader';
 import { CartProvider } from './contexts/CartContext';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -21,6 +25,7 @@ const FavoriteCollection = lazy(() => import('./pages/FavoriteCollection'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Settings = lazy(() => import('./pages/Settings'));
+const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
 
 function App() {
   return (
@@ -30,6 +35,7 @@ function App() {
         <NavBar />
         <div className="relative">
           <Suspense fallback={<Loader />}> {/* Affiche le loader pendant le chargement */}
+            <Elements stripe={stripePromise}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Home />} />
@@ -46,7 +52,9 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/order-confirmation" element={<OrderConfirmation />} />
             </Routes>
+            </Elements>
           </Suspense>
         </div>
       </Router>
