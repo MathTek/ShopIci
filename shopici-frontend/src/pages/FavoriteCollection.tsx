@@ -31,13 +31,11 @@ export default function Collection() {
                 const collectionData = await getCollectionById(id);
                 setCollection(collectionData);
                 const productsInCollection = await getProductsInCollection(id);
-                console.log("Products in collection:", productsInCollection);
 
                 const fetchedProducts = await Promise.all(
                     productsInCollection.map((item: any) => getProductById(item.product_id))
                 );
                 setProducts(fetchedProducts);
-                console.log("Fetched products:", fetchedProducts);
 
             }
         };
@@ -48,7 +46,6 @@ export default function Collection() {
     const handleRemoveFromCollection = async (productId: number) => {
         const userId = await getUserId();
         if (userId && productId) {
-            console.log(`Removing product ${productId}`);
             await removeProductFromCollection(userId, productId);
             setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
         }

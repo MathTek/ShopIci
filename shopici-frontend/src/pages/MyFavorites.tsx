@@ -68,7 +68,6 @@ useEffect(() => {
 }, []);
 
     const handleProductAddToCollection = async (productIds: number[]) => {
-        console.log("Adding products to collection:", productIds);
         for (const productId of productIds) {
             const collectionId = await createNewCollection(userId, collectionName, productId);
             if (collectionId) {
@@ -132,7 +131,6 @@ useEffect(() => {
                         [collectionId]: (prev[collectionId] || 0) + 1
                     }));
 
-                    console.log(`Product ${draggedProductId} added to collection ${collectionId}`);
                 }
             } catch (error) {
                 console.error('Error adding product to collection:', error);
