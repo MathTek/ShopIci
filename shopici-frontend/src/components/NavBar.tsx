@@ -16,13 +16,20 @@ const Navbar = () => {
     const loadExistingAvatar = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
-          if (!session?.user) return;
-          setUserId(session.user.id);
+            let currentUserId = session?.user?.id;
+            
+            // If no Supabase session, check 2FA auth
+            if (!currentUserId) {
+              currentUserId = localStorage.getItem('2fa_user_id');
+            }
+
+            if (!currentUserId) return;
+            setUserId(currentUserId);
 
           const { data, error } = await supabase
             .from("profiles")
             .select("avatar_url")
-            .eq("id", session.user.id)
+            .eq("id", currentUserId)
             .single();
     
           if (data?.avatar_url) {
@@ -35,12 +42,49 @@ const Navbar = () => {
     };
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data }) => {
-          setUser(data.session?.user ?? null);
-        });
+        // Check both Supabase session and localStorage 2FA auth
+        const setupAuth = async () => {
+          // FIRST: Check localStorage 2FA auth
+          const twoFAUserId = localStorage.getItem('2fa_user_id');
+          const twoFAEmail = localStorage.getItem('2fa_user_email');
+          
+          if (twoFAUserId && twoFAEmail) {
+            console.log("✅ 2FA auth found in localStorage");
+            setUser({ id: twoFAUserId, email: twoFAEmail, user_metadata: {} } as any);
+            setUserId(twoFAUserId);
+            return; // Don't check Supabase session if 2FA is active
+          }
 
+          // SECOND: Check Supabase session if no 2FA
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user) {
+            console.log("📱 Supabase session found:", data.session.user.id);
+            setUser(data.session.user);
+            setUserId(data.session.user.id);
+          } else {
+            console.log("❌ No auth found (neither 2FA nor Supabase)");
+            setUser(null);
+          }
+        };
+
+        setupAuth();
+
+        // Listen for Supabase auth changes (only if 2FA not active)
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+          // Don't override 2FA auth with Supabase null
+          const twoFAUserId = localStorage.getItem('2fa_user_id');
+          if (twoFAUserId) {
+            console.log("🔒 2FA auth is active, ignoring Supabase auth change");
+            return;
+          }
+          
+          console.log("🔄 Auth state changed:", session?.user?.id);
           setUser(session?.user ?? null);
+          if (session?.user) {
+            setUserId(session.user.id);
+          } else {
+            setUserId(null);
+          }
         });
 
         loadExistingAvatar();
@@ -114,7 +158,11 @@ const Navbar = () => {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
+        // Clear 2FA authentication
+        localStorage.removeItem('2fa_user_id');
+        localStorage.removeItem('2fa_user_email');
         setUser(null);
+        setUserId(null);
         navigate("/login");
     };
 
