@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { buildPromoPreview, findPromoCode, normalizePromoCode, validatePromoForCart } from '../services/promoCodes';
+import { supabase } from '../services/supabaseClient';
+
+const LOCAL_PRODUCT_SALES_KEY = 'shopici_local_product_sales_v1';
 
 const Cart: React.FC = () => {
   const {
@@ -24,6 +27,96 @@ const Cart: React.FC = () => {
   const navigate = useNavigate();
   const normalizedPromoInput = normalizePromoCode(promoInput);
   const isApplyDisabled = !normalizedPromoInput || promoLoading || !!appliedPromo;
+
+  const saveLocalSalesFallback = (salesRows: Array<Record<string, unknown>>) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(LOCAL_PRODUCT_SALES_KEY);
+      const existing = raw ? JSON.parse(raw) : [];
+      const merged = [...(Array.isArray(existing) ? existing : []), ...salesRows];
+      window.localStorage.setItem(LOCAL_PRODUCT_SALES_KEY, JSON.stringify(merged.slice(-5000)));
+    } catch (error) {
+      console.error('Error persisting local sales fallback:', error);
+    }
+  };
+
+  const recordSalesForOrder = async (orderId: string, cartItems: typeof items) => {
+    if (!cartItems.length) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const buyerId = session?.user?.id || null;
+    const productIds = cartItems.map((item) => item.id);
+
+    const { data: productRows } = await supabase
+      .from('products')
+      .select('id, user_id, price')
+      .in('id', productIds);
+
+    const sellerByProduct = new Map((productRows || []).map((row: any) => [row.id, row.user_id]));
+
+    const baseRows = cartItems.map((item) => ({
+      order_id: orderId,
+      product_id: item.id,
+      quantity: item.qty,
+      amount: (item.price || 0) * item.qty,
+      total_amount: (item.price || 0) * item.qty,
+      price: item.price || 0,
+      seller_id: sellerByProduct.get(item.id) || null,
+      buyer_id: buyerId,
+      user_id: buyerId,
+      status: 'completed',
+      created_at: new Date().toISOString(),
+    }));
+
+    const tableCandidates = ['sales', 'orders', 'transactions'];
+    const variants = [
+      (row: any) => ({
+        seller_id: row.seller_id,
+        buyer_id: row.buyer_id,
+        product_id: row.product_id,
+        quantity: row.quantity,
+        total_amount: row.total_amount,
+        order_id: row.order_id,
+        status: row.status,
+        created_at: row.created_at,
+      }),
+      (row: any) => ({
+        seller_id: row.seller_id,
+        user_id: row.user_id,
+        product_id: row.product_id,
+        quantity: row.quantity,
+        amount: row.amount,
+        total: row.amount,
+        order_id: row.order_id,
+        status: row.status,
+        created_at: row.created_at,
+      }),
+      (row: any) => ({
+        product_id: row.product_id,
+        quantity: row.quantity,
+        total_amount: row.total_amount,
+        order_id: row.order_id,
+        created_at: row.created_at,
+      }),
+    ];
+
+    let inserted = false;
+    for (const table of tableCandidates) {
+      for (const variant of variants) {
+        const payload = baseRows.map(variant);
+        const { error } = await supabase.from(table).insert(payload);
+        if (!error) {
+          inserted = true;
+          break;
+        }
+      }
+      if (inserted) break;
+    }
+
+    if (!inserted) {
+      saveLocalSalesFallback(baseRows);
+    }
+  };
 
   const handleApplyPromo = async () => {
     setPromoError(null);
@@ -70,8 +163,10 @@ const Cart: React.FC = () => {
 
   const handleCheckout = async () => {
     setPlacing(true);
+    const cartSnapshot = items.map((item) => ({ ...item }));
     await new Promise(r => setTimeout(r, 900));
     const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
+    await recordSalesForOrder(orderId, cartSnapshot);
     clearCart();
     clearPromo();
     setPromoInput('');

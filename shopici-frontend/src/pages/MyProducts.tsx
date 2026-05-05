@@ -20,6 +20,66 @@ interface SellerPromotion {
 
 type PromoTab = 'code' | 'scheduled';
 type Toast = { id: number; type: 'success' | 'error'; message: string };
+type MetricPoint = { label: string; value: number };
+
+type SellerAnalytics = {
+    totalViews: number;
+    totalFavorites: number;
+    totalSales: number;
+    totalRevenue: number;
+    viewsSeries: MetricPoint[];
+    favoritesSeries: MetricPoint[];
+    salesSeries: MetricPoint[];
+};
+
+const ANALYTICS_DAYS = 7;
+const LOCAL_PRODUCT_VIEWS_KEY = 'shopici_local_product_views_v1';
+const LOCAL_PRODUCT_SALES_KEY = 'shopici_local_product_sales_v1';
+
+const buildLastDaysKeys = (days: number) => {
+    const keys: string[] = [];
+    for (let index = days - 1; index >= 0; index -= 1) {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() - index);
+        keys.push(date.toISOString().slice(0, 10));
+    }
+    return keys;
+};
+
+const toDisplayLabel = (isoDay: string) => {
+    const date = new Date(`${isoDay}T00:00:00`);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const resolveMetricDate = (row: any) => {
+    return row?.created_at
+        || row?.viewed_at
+        || row?.inserted_at
+        || row?.updated_at
+        || row?.date
+        || row?.viewed_on
+        || row?.ordered_at
+        || row?.order_date
+        || row?.sold_at
+        || row?.purchased_at
+        || row?.transaction_date
+        || row?.paid_at;
+};
+
+const createEmptyMetricSeries = (days = ANALYTICS_DAYS): MetricPoint[] => {
+    return buildLastDaysKeys(days).map((key) => ({ label: toDisplayLabel(key), value: 0 }));
+};
+
+const createEmptyAnalytics = (): SellerAnalytics => ({
+    totalViews: 0,
+    totalFavorites: 0,
+    totalSales: 0,
+    totalRevenue: 0,
+    viewsSeries: createEmptyMetricSeries(),
+    favoritesSeries: createEmptyMetricSeries(),
+    salesSeries: createEmptyMetricSeries(),
+});
 
 const MyProducts = () => {
     const [products, setProducts] = useState<Array<any>>([]);
@@ -48,6 +108,7 @@ const MyProducts = () => {
     const [isCreatingScheduledPromo, setIsCreatingScheduledPromo] = useState(false);
     const [promotions, setPromotions] = useState<SellerPromotion[]>([]);
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const [analytics, setAnalytics] = useState<SellerAnalytics>(createEmptyAnalytics);
     const toastCounter = useRef(0);
     const navigate = useNavigate();
 
@@ -72,6 +133,172 @@ const MyProducts = () => {
         setPromotions((data || []).map((item) => toPromoRecord(item)));
     };
 
+    const buildMetricSeriesFromRows = (
+        rows: Array<any>,
+        valueResolver: (row: any) => number,
+        days = ANALYTICS_DAYS,
+    ): MetricPoint[] => {
+        const keys = buildLastDaysKeys(days);
+        const bucket = new Map<string, number>();
+        keys.forEach((key) => bucket.set(key, 0));
+
+        rows.forEach((row) => {
+            const metricDate = resolveMetricDate(row);
+            if (!metricDate) return;
+            const key = new Date(metricDate).toISOString().slice(0, 10);
+            if (!bucket.has(key)) return;
+            const current = bucket.get(key) || 0;
+            bucket.set(key, current + valueResolver(row));
+        });
+
+        return keys.map((key) => ({ label: toDisplayLabel(key), value: bucket.get(key) || 0 }));
+    };
+
+    const loadSellerAnalytics = async (userId: string, sellerProducts: Array<any>) => {
+        const productIds = sellerProducts.map((item) => item.id).filter(Boolean);
+
+        if (productIds.length === 0) {
+            setAnalytics(createEmptyAnalytics());
+            return;
+        }
+
+        const numeric = (value: unknown) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const { data: favoriteRows, error: favoriteError } = await supabase
+            .from('favorites')
+            .select('product_id, created_at')
+            .in('product_id', productIds);
+
+        if (favoriteError) {
+            console.error('Error fetching favorites analytics:', favoriteError);
+        }
+
+        const favoriteData = favoriteRows || [];
+
+        const { data: viewsRows, error: viewsError } = await supabase
+            .from('product_views')
+            .select('*')
+            .in('product_id', productIds)
+            .limit(5000);
+
+        if (viewsError) {
+            console.error('Error fetching product views analytics:', viewsError);
+        }
+
+        const viewRows: Array<any> = viewsRows || [];
+        const localViewRows: Array<any> = (() => {
+            if (typeof window === 'undefined') return [];
+            try {
+                const raw = window.localStorage.getItem(LOCAL_PRODUCT_VIEWS_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return [];
+                return parsed.filter((row: any) => row?.product_id && productIds.includes(row.product_id));
+            } catch {
+                return [];
+            }
+        })();
+        const combinedViewRows = [...viewRows, ...localViewRows];
+
+        const salesTableCandidates = ['sales', 'orders', 'transactions'];
+        const salesRows: Array<any> = [];
+        const seenSalesRows = new Set<string>();
+
+        const pushUniqueSalesRows = (rows: Array<any>) => {
+            rows.forEach((row) => {
+                const identity = String(
+                    row?.id
+                    || `${row?.order_id || ''}-${row?.product_id || ''}-${resolveMetricDate(row) || ''}-${row?.amount || row?.total_amount || row?.total || row?.price || ''}`
+                );
+                if (!seenSalesRows.has(identity)) {
+                    seenSalesRows.add(identity);
+                    salesRows.push(row);
+                }
+            });
+        };
+
+        for (const table of salesTableCandidates) {
+            const bySeller = await supabase
+                .from(table)
+                .select('*')
+                .eq('seller_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(500);
+
+            if (!bySeller.error && Array.isArray(bySeller.data)) {
+                pushUniqueSalesRows(bySeller.data);
+            }
+
+            const byProduct = await supabase
+                .from(table)
+                .select('*')
+                .in('product_id', productIds)
+                .order('created_at', { ascending: false })
+                .limit(500);
+
+            if (!byProduct.error && Array.isArray(byProduct.data)) {
+                pushUniqueSalesRows(byProduct.data);
+            }
+        }
+
+        const normalizedSalesRows = salesRows.filter((row) => {
+            if (row?.product_id && productIds.includes(row.product_id)) return true;
+            return row?.seller_id === userId;
+        });
+
+        const localSalesRows: Array<any> = (() => {
+            if (typeof window === 'undefined') return [];
+            try {
+                const raw = window.localStorage.getItem(LOCAL_PRODUCT_SALES_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(parsed)) return [];
+                return parsed.filter((row: any) => {
+                    if (row?.product_id && productIds.includes(row.product_id)) return true;
+                    return row?.seller_id === userId;
+                });
+            } catch {
+                return [];
+            }
+        })();
+        const combinedSalesRows = [...normalizedSalesRows, ...localSalesRows];
+
+        const totalRevenue = combinedSalesRows.reduce((sum, row) => {
+            const amount = numeric(row?.total_amount) || numeric(row?.amount) || numeric(row?.total) || numeric(row?.price);
+            const quantity = Math.max(1, numeric(row?.quantity));
+            return sum + amount * quantity;
+        }, 0);
+
+        const computedSalesSeries = buildMetricSeriesFromRows(combinedSalesRows, (row) => {
+            const amount = numeric(row?.total_amount) || numeric(row?.amount) || numeric(row?.total) || numeric(row?.price);
+            const quantity = Math.max(1, numeric(row?.quantity));
+            return amount * quantity;
+        });
+
+        const hasVisibleSalesPoint = computedSalesSeries.some((point) => point.value > 0);
+        const normalizedSalesSeries = (!hasVisibleSalesPoint && combinedSalesRows.length > 0)
+            ? computedSalesSeries.map((point, index) => (
+                index === computedSalesSeries.length - 1
+                    ? { ...point, value: totalRevenue > 0 ? totalRevenue : 1 }
+                    : point
+            ))
+            : computedSalesSeries;
+        const finalSalesSeries = normalizedSalesSeries.length > 0
+            ? normalizedSalesSeries
+            : createEmptyMetricSeries();
+
+        setAnalytics({
+            totalViews: combinedViewRows.length,
+            totalFavorites: favoriteData.length,
+            totalSales: combinedSalesRows.length,
+            totalRevenue,
+            viewsSeries: buildMetricSeriesFromRows(combinedViewRows, () => 1),
+            favoritesSeries: buildMetricSeriesFromRows(favoriteData, () => 1),
+            salesSeries: finalSalesSeries,
+        });
+    };
+
 
     const checkAuthAndLoadProducts = async () => {
         try {
@@ -93,6 +320,7 @@ const MyProducts = () => {
             } else {
                 const productsWithPromotions = await attachScheduledPromosToProducts(productsData || []);
                 setProducts(productsWithPromotions);
+                await loadSellerAnalytics(userId, productsData || []);
             }
 
             await loadSellerPromotions(userId);
@@ -436,6 +664,17 @@ const MyProducts = () => {
 
     const inputCls = "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-indigo-400 focus:bg-white/8 transition-all duration-200";
     const selectCls = inputCls + " appearance-none cursor-pointer";
+    const viewsMax = Math.max(...analytics.viewsSeries.map((point) => point.value), 1);
+    const viewStep = analytics.viewsSeries.length > 1 ? 100 / (analytics.viewsSeries.length - 1) : 100;
+    const viewsPath = analytics.viewsSeries
+        .map((point, index) => {
+            const x = index * viewStep;
+            const y = 100 - (point.value / viewsMax) * 100;
+            return `${x},${y}`;
+        })
+        .join(' ');
+    const salesSeries = analytics.salesSeries.length > 0 ? analytics.salesSeries : createEmptyMetricSeries();
+    const salesMax = Math.max(...salesSeries.map((point) => point.value), 1);
 
     return (
         <div className="min-h-screen bg-[#0a0f1e] text-slate-200">
@@ -457,8 +696,8 @@ const MyProducts = () => {
                     </div>
                 ))}
             </div>
-
-            <div className="relative z-10 max-w-[1200px] mx-auto px-4 sm:px-6 pt-24 pb-12">
+            <br></br>
+            <div className="relative z-10 max-w-[1200px] mx-auto px-6 pt-24 pb-8">
 
                 {/* ─── Page header ─── */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-7">
@@ -477,26 +716,83 @@ const MyProducts = () => {
                     </button>
                 </div>
 
-                {/* ─── Top stat strip ─── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    {[
-                        { label: 'Total Products',       value: products.length,           icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: 'text-indigo-300', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-                        { label: 'Active Listings',      value: products.filter(p=>p.status==='active').length, icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                        { label: 'Active Promotions',    value: activePromos.length,       icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z', color: 'text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20' },
-                        { label: 'On Promotion',         value: discountedProducts.length, icon: 'M13 10V3L4 14h7v7l9-11h-7z', color: 'text-purple-300', bg: 'bg-purple-500/10 border-purple-500/20' },
-                    ].map(s => (
-                        <div key={s.label} className={`rounded-xl border p-3.5 ${s.bg} backdrop-blur-sm`}>
-                            <svg className={`w-4 h-4 mb-2 ${s.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon} />
-                            </svg>
-                            <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-                            <div className="text-[11px] text-white/40 mt-0.5">{s.label}</div>
+                <br></br>
+                <section className="mb-5 pb-5 border-b border-white/10">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        {[
+                            { label: 'Total Views', value: analytics.totalViews, color: 'text-indigo-300', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z' },
+                            { label: 'Favorites', value: analytics.totalFavorites, color: 'text-pink-300', icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
+                            { label: 'Sales', value: analytics.totalSales, color: 'text-emerald-300', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1' },
+                        ].map((kpi) => (
+                            <div key={kpi.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[11px] text-white/45">{kpi.label}</p>
+                                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d={kpi.icon} />
+                                    </svg>
+                                </div>
+                                <p className={`text-lg font-bold mt-1 ${kpi.color}`}>{kpi.value}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <br></br>
+                    <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-sm font-semibold text-white">Product Views</p>
+                                <span className="text-xs text-white/40">Last 7 days</span>
+                            </div>
+                            <div className="h-24 rounded-lg bg-white/[0.03] border border-white/5 p-2">
+                                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+                                    <polyline
+                                        fill="none"
+                                        stroke="rgba(129, 140, 248, 0.95)"
+                                        strokeWidth="2.5"
+                                        points={viewsPath}
+                                    />
+                                </svg>
+                            </div>
+                            <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] text-white/35">
+                                {analytics.viewsSeries.map((point) => (
+                                    <span key={`view-${point.label}`} className="text-center truncate">{point.label}</span>
+                                ))}
+                            </div>
                         </div>
-                    ))}
-                </div>
 
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-sm font-semibold text-white">Sales Revenue</p>
+                                <span className="text-xs text-white/40">Last 7 days</span>
+                            </div>
+                            <div className="h-24 flex items-end gap-1.5 rounded-lg bg-white/[0.03] border border-white/5 px-2 py-2">
+                                {salesSeries.map((point) => {
+                                    const hasSales = analytics.totalSales > 0 || analytics.totalRevenue > 0;
+                                    const height = hasSales
+                                        ? `${Math.max(12, (point.value / salesMax) * 100)}%`
+                                        : '10%';
+                                    return (
+                                        <div key={`sales-${point.label}`} className="flex-1 h-full flex flex-col items-center justify-end gap-1">
+                                            <div className={`w-full rounded-sm ${hasSales ? 'bg-gradient-to-t from-emerald-500/80 to-cyan-400/85' : 'bg-white/15'}`} style={{ height }}></div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] text-white/35">
+                                {salesSeries.map((point) => (
+                                    <span key={`sales-date-${point.label}`} className="text-center truncate">{point.label}</span>
+                                ))}
+                            </div>
+                            <p className="mt-2 text-xs text-emerald-300 font-semibold">{analytics.totalRevenue.toFixed(2)} € revenue</p>
+                            {analytics.totalSales === 0 && (
+                                <p className="mt-1 text-[11px] text-white/35">No sales yet in the last 7 days.</p>
+                            )}
+                        </div>
+                    </div>
+                </section>
+                
+                <br></br>
                 {/* ─── Main 2-column layout ─── */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
 
                     {/* Left: tabbed form card (3 cols) */}
                     <div className="lg:col-span-3 rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm overflow-hidden">
@@ -670,11 +966,11 @@ const MyProducts = () => {
                 </div>
 
                 {/* ─── Promotions list ─── */}
-                <section className="mb-10">
+                <section className="mb-8 pt-6 border-t border-white/10">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h2 className="text-base font-semibold text-white">Your Promotions</h2>
-                            <p className="text-[11px] text-white/40 mt-0.5">{promotions.length} total · all stored in the same promo table</p>
+                            <h2 className="text-lg font-semibold text-white">Your Promotions</h2>
+                            <p className="text-xs text-white/40 mt-0.5">{promotions.length} total · all stored in the same promo table</p>
                         </div>
                     </div>
 
@@ -693,7 +989,7 @@ const MyProducts = () => {
                                 const productImg = getProductImage(promo.product_id);
 
                                 return (
-                                    <div key={promo.id} className="group rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-4 flex flex-col gap-2.5 hover:border-white/20 hover:bg-white/[0.05] transition-all duration-200">
+                                    <div key={promo.id} className="group rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-3.5 flex flex-col gap-2 hover:border-white/20 hover:bg-white/[0.05] transition-all duration-200">
                                         {/* Top row: icon + name + status */}
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-3 min-w-0">
@@ -723,9 +1019,9 @@ const MyProducts = () => {
                                         </div>
 
                                         {/* Discount value */}
-                                        <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2 flex items-center justify-between">
-                                            <span className="text-lg font-bold text-white">{valueLabel}</span>
-                                            <span className="text-[11px] text-white/35">{promo.type === 'percentage' ? 'percent' : 'fixed'}</span>
+                                        <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-1.5 flex items-center justify-between">
+                                            <span className="text-base font-bold text-white">{valueLabel}</span>
+                                            <span className="text-[10px] text-white/35 uppercase">{promo.type === 'percentage' ? 'percent' : 'fixed'}</span>
                                         </div>
 
                                         {/* Meta */}
@@ -746,19 +1042,19 @@ const MyProducts = () => {
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-2 pt-1 border-t border-white/8">
+                                        <div className="flex items-center justify-end gap-1.5 pt-2 mt-1 border-t border-white/8">
                                             <button
                                                 onClick={() => handleTogglePromo(promo)}
-                                                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${promo.is_active ? 'border border-white/10 text-white/50 hover:bg-white/5 hover:text-white/80' : 'border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}
+                                                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${promo.is_active ? 'border border-white/10 text-white/60 hover:bg-white/5 hover:text-white/80' : 'border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'}`}
                                             >
                                                 {promo.is_active ? 'Disable' : 'Enable'}
                                             </button>
                                             <button
                                                 onClick={() => handleDeletePromo(promo.id)}
-                                                className="p-1.5 rounded-lg border border-red-500/20 text-red-400/60 hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/40 transition-all"
+                                                className="px-2.5 py-1 rounded-md border border-red-500/20 text-[11px] text-red-400/70 hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/40 transition-all"
                                                 aria-label="Delete promotion"
                                             >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                Delete
                                             </button>
                                         </div>
                                     </div>
@@ -769,11 +1065,11 @@ const MyProducts = () => {
                 </section>
 
                 {/* ─── Products section ─── */}
-                <section>
+                <section className="pt-6 border-t border-white/10">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h2 className="text-base font-semibold text-white">Products Eligible for Promotions</h2>
-                            <p className="text-[11px] text-white/40 mt-0.5">{products.length} product{products.length !== 1 ? 's' : ''} · hover to edit or delete</p>
+                            <h2 className="text-lg font-semibold text-white">Products Eligible for Promotions</h2>
+                            <p className="text-xs text-white/40 mt-0.5">{products.length} product{products.length !== 1 ? 's' : ''} · hover to edit or delete</p>
                         </div>
                     </div>
 

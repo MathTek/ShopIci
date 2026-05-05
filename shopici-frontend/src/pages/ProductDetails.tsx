@@ -31,6 +31,8 @@ interface Appreciation {
     created_at: string;
 }
 
+const LOCAL_PRODUCT_VIEWS_KEY = 'shopici_local_product_views_v1';
+
 const ProductDetails: React.FC = () => {
     const { id: productId } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -77,6 +79,57 @@ const ProductDetails: React.FC = () => {
                 if (error) throw error;
                 const promoMap = await fetchScheduledPromosForProducts([data.id]);
                 const pricing = getScheduledPromoPricing(Number(data.price || 0), promoMap[data.id] || []);
+
+                const { data: { session } } = await supabase.auth.getSession();
+                const viewerId = session?.user?.id || null;
+                const trackingPayloads: Array<Record<string, unknown>> = [
+                    { product_id: data.id, user_id: viewerId, seller_id: data.user_id },
+                    { product_id: data.id, viewer_id: viewerId, seller_id: data.user_id },
+                    { product_id: data.id, user_id: viewerId },
+                    { product_id: data.id, viewer_id: viewerId },
+                    { product_id: data.id },
+                ];
+
+                let tracked = false;
+                let lastTrackError: unknown = null;
+
+                for (const payload of trackingPayloads) {
+                    const sanitizedPayload = Object.fromEntries(
+                        Object.entries(payload).filter(([, value]) => value !== undefined && value !== null)
+                    );
+
+                    const { error: viewError } = await supabase
+                        .from('product_views')
+                        .insert(sanitizedPayload);
+
+                    if (!viewError) {
+                        tracked = true;
+                        break;
+                    }
+
+                    lastTrackError = viewError;
+                }
+
+                if (!tracked) {
+                    console.error('Error tracking product view:', lastTrackError);
+                    if (typeof window !== 'undefined') {
+                        try {
+                            const raw = window.localStorage.getItem(LOCAL_PRODUCT_VIEWS_KEY);
+                            const existing = raw ? JSON.parse(raw) : [];
+                            const next = Array.isArray(existing) ? existing : [];
+                            next.push({
+                                product_id: data.id,
+                                user_id: viewerId,
+                                seller_id: data.user_id,
+                                created_at: new Date().toISOString(),
+                                source: 'local-fallback',
+                            });
+                            window.localStorage.setItem(LOCAL_PRODUCT_VIEWS_KEY, JSON.stringify(next.slice(-5000)));
+                        } catch (persistError) {
+                            console.error('Error persisting local product view fallback:', persistError);
+                        }
+                    }
+                }
 
                 setProduct({
                     ...data,
