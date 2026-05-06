@@ -123,10 +123,6 @@ const Settings = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1a1f3a] to-[#0f172a] text-slate-200 py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-cyan-400">⚙️</span>
-            <span className="text-sm font-semibold text-cyan-400/80">ACCOUNT</span>
-          </div>
           <h1 className="text-5xl font-bold text-white mb-3">Settings</h1>
           <p className="text-white/60 text-lg">Manage your account security and preferences</p>
         </div>
