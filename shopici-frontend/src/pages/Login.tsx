@@ -197,193 +197,162 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200 flex items-center justify-center relative overflow-hidden px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center relative overflow-hidden px-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-3/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-bounce-gentle"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl opacity-40"></div>
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl opacity-30"></div>
       </div>
-
-      <div className="card-gradient w-full max-w-md rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 animate-fade-in relative z-10">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-4">🛍️</div>
-          <h2 className="text-4xl font-bold text-gradient mb-2">Welcome Back!</h2>
-          <p className="text-base-content/70">Sign in to continue your shopping journey</p>
-        </div>
-
-        <form onSubmit={isCodeSent ? (usesTwoFA ? handle2FAVerification : handlePasswordLogin) : handleSendCode} className="space-y-6">
-          {!isCodeSent ? (
-            <>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Email or Username
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter your email or username"
-                  className="input input-bordered w-full bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80 transition-all duration-300 rounded-xl h-14"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isCodeSent || isLoading}
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || isCodeSent}
-                className="btn-gradient w-full h-14 text-lg font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <span className="loading loading-spinner loading-sm"></span>
-                ) : isCodeSent ? (
-                  "✓ Code Sent"
-                ) : (
-                  "Continue"
-                )}
-              </button>
-            </>
-          ) : usesTwoFA ? (
-            <>
-              <div className="space-y-3 text-center mb-6">
-                <div className="inline-block p-3 bg-primary/20 rounded-full mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold">Verify Your Identity</h3>
-                <p className="text-base-content/70">
-                  We've sent a 6-digit code to <strong>{userEmail}</strong>
-                </p>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Verification Code (6 digits)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="000000"
-                  maxLength={6}
-                  className="input input-bordered w-full bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80 transition-all duration-300 rounded-xl h-14 text-center text-2xl tracking-widest font-mono"
-                  value={twoFACode}
-                  onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ""))}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn-gradient w-full h-14 text-lg font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                Verify Code
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCodeSent(false);
-                  setTwoFACode("");
-                  setMessage("");
-                }}
-                className="btn btn-ghost w-full h-12 rounded-xl"
-              >
-                ← Try Different Email
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="space-y-3 text-center mb-6">
-                <div className="inline-block p-3 bg-primary/20 rounded-full mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold">Sign In</h3>
-                <p className="text-base-content/70">
-                  Enter your password for <strong>{userEmail}</strong>
-                </p>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-semibold text-base-content/80 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    Password
-                  </span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="input input-bordered w-full bg-base-200/50 backdrop-blur-sm border-base-300/50 focus:border-primary focus:bg-base-200/80 transition-all duration-300 rounded-xl h-14"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-gradient w-full h-14 text-lg font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <span className="loading loading-spinner loading-sm"></span>
-                ) : (
-                  "Sign In"
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCodeSent(false);
-                  setPassword("");
-                  setMessage("");
-                }}
-                className="btn btn-ghost w-full h-12 rounded-xl"
-              >
-                ← Try Different Email
-              </button>
-            </>
-          )}
-
-          {message && (
-            <div className={`alert ${message.includes("sent") || message.includes("successful") || message.includes("verified") ? "alert-success" : "alert-error"} animate-fade-in rounded-xl`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                {message.includes("sent") || message.includes("successful") || message.includes("verified") ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                )}
-              </svg>
-              <span>{message}</span>
+      
+      <div className="w-full max-w-md relative z-10">
+        <div className="bg-gradient-to-b from-slate-800/80 to-slate-800/40 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50 p-10">
+          <div className="text-center mb-10">
+            <div className="inline-block mb-5 p-3 rounded-2xl bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/30">
+              <div className="text-5xl">🛍️</div>
             </div>
-          )}
-        </form>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent mb-2">ShopIci</h1>
+            <p className="text-slate-400 text-sm tracking-wide">Welcome back</p>
+          </div>
 
-        <div className="text-center mt-8 p-4 bg-base-200/30 rounded-xl">
-          <p className="text-base-content/70">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-primary font-semibold hover:text-secondary transition-colors duration-300">
-              Create one now →
-            </Link>
-          </p>
+          <form onSubmit={isCodeSent ? (usesTwoFA ? handle2FAVerification : handlePasswordLogin) : handleSendCode} className="space-y-6">
+            {!isCodeSent ? (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-200 mb-3 tracking-wide">
+                    Email or Username
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="name@example.com"
+                    className="w-full px-4 py-3 border border-slate-600/50 bg-slate-700/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 text-white placeholder:text-slate-500 hover:border-slate-600"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isCodeSent || isLoading}
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || isCodeSent}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/25"
+                >
+                  {isLoading ? (
+                    <span className="loading loading-spinner loading-sm"></span>
+                  ) : (
+                    "Continue"
+                  )}
+                </button>
+              </>
+            ) : usesTwoFA ? (
+              <>
+                <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 mb-2 backdrop-blur-sm">
+                  <p className="text-sm text-blue-300">
+                    Verification code sent to <strong className="font-semibold">{userEmail}</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-200 mb-3 tracking-wide">
+                    Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="000000"
+                    maxLength={6}
+                    className="w-full px-4 py-3 border border-slate-600/50 bg-slate-700/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 text-white placeholder:text-slate-500 text-center text-2xl tracking-widest font-mono hover:border-slate-600"
+                    value={twoFACode}
+                    onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ""))}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25"
+                >
+                  Verify
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCodeSent(false);
+                    setTwoFACode("");
+                    setMessage("");
+                  }}
+                  className="w-full py-3 px-4 bg-slate-700/50 hover:bg-slate-700 text-slate-200 font-medium rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-slate-600"
+                >
+                  Back
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="bg-blue-900/20 border border-blue-800/50 rounded-xl p-4 mb-2 backdrop-blur-sm">
+                  <p className="text-sm text-blue-300">
+                    Signing in to <strong className="font-semibold">{userEmail}</strong>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-200 mb-3 tracking-wide">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 border border-slate-600/50 bg-slate-700/50 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 text-white placeholder:text-slate-500 hover:border-slate-600"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/25"
+                >
+                  {isLoading ? (
+                    <span className="loading loading-spinner loading-sm"></span>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCodeSent(false);
+                    setPassword("");
+                    setMessage("");
+                  }}
+                  className="w-full py-3 px-4 bg-slate-700/50 hover:bg-slate-700 text-slate-200 font-medium rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-slate-600"
+                >
+                  Back
+                </button>
+              </>
+            )}
+
+            {message && (
+              <div className={`rounded-xl p-4 text-sm border backdrop-blur-sm ${
+                message.includes("sent") || message.includes("successful") || message.includes("verified")
+                  ? "bg-green-900/20 border-green-800/50 text-green-300"
+                  : "bg-red-900/20 border-red-800/50 text-red-300"
+              }`}>
+                {message}
+              </div>
+            )}
+          </form>
         </div>
+
+        <p className="text-center text-sm text-slate-500 mt-8">
+          Don't have an account?{" "}
+          <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors duration-300">
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   );
